@@ -129,6 +129,16 @@ object Solver {
         )
     }
 
+    /**
+     * How long to draw sightline [index] on a map or in an export: a bit past the target,
+     * or 20 km if there is no fix.
+     */
+    fun drawLengthM(result: SolveResult, index: Int): Double {
+        val fix = result as? SolveResult.Fix ?: return 20_000.0
+        val d = fix.distancesM[index]
+        return max(d * 1.4, d + 2 * (fix.uncertaintyRadiusM ?: 0.0))
+    }
+
     /** Widest angle between any two bearings, as a line crossing angle in 0..90°. */
     fun bestCrossingAngle(bearingsDeg: List<Double>): Double {
         var best = 0.0

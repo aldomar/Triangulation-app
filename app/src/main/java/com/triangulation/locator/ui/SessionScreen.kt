@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -18,8 +20,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -39,13 +42,17 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.triangulation.locator.data.Observation
 import com.triangulation.locator.data.ObservationStore
+import com.triangulation.locator.data.Session
 import com.triangulation.locator.ui.theme.StatusColors
 import kotlinx.coroutines.launch
 import java.text.DateFormat
@@ -53,48 +60,75 @@ import java.util.Date
 import kotlin.math.roundToInt
 
 /**
- * List of saved bearings. Tick the ones to use, then "Show on map".
- *
- * @param selectedIds ticked bearings, kept by the caller so they survive a trip to the map;
- *   null means "not chosen yet", which ticks the two newest.
+ * One session's bearings. Tick the ones to use, then "Show on map". Ticks are saved, so they
+ * survive closing the app. Also: rename, delete, export, move bearings to another session.
  */
 @Composable
-fun ObservationsScreen(
+fun SessionScreen(
     store: ObservationStore,
-    selectedIds: Set<String>?,
-    onSelectionChange: (Set<String>) -> Unit,
+    sessionId: Long,
     onShowMap: () -> Unit,
     onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    var observations by remember { mutableStateOf<List<Observation>?>(null) }
-    var confirmDeleteAll by remember { mutableStateOf(false) }
-    var toDelete by remember { mutableStateOf<Observation?>(null) }
+    val sessionFlow = remember(sessionId) { store.session(sessionId) }
+    val observationsFlow = remember(sessionId) { store.observations(sessionId) }
+    val session by sessionFlow.collectAsStateWithLifecycle(null)
+    val observations by observationsFlow.collectAsStateWithLifecycle(null)
+    var activeId by remember { mutableStateOf<Long?>(null) }
+    LaunchedEffect(session) { activeId = store.activeSession()?.id }
 
-    suspend fun reload() {
-        val list = store.list()
-        observations = list
-        val ids = list.map { it.id }.toSet()
-        // Default to the two newest; drop ticks for deleted bearings.
-        onSelectionChange(selectedIds?.intersect(ids) ?: list.take(2).map { it.id }.toSet())
+    var renaming by remember { mutableStateOf(false) }
+    var confirmDeleteSession by remember { mutableStateOf(false) }
+    var toDelete by remember { mutableStateOf<Observation?>(null) }
+    var toMove by remember { mutableStateOf<Observation?>(null) }
+
+    // Leave if the session doesn't exist (e.g. just deleted).
+    LaunchedEffect(sessionFlow) {
+        sessionFlow.collect { if (it == null) onBack() }
     }
-    LaunchedEffect(Unit) { reload() }
-    val selected = selectedIds.orEmpty()
+
+    val name = session?.name ?: ""
+    val list = observations
+    val included = list.orEmpty().count { it.included }
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
-            Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) { ScreenHeader("Saved bearings", onBack) }
-                if (!observations.isNullOrEmpty()) {
-                    TextButton(onClick = { confirmDeleteAll = true }) { Text("Delete all") }
+            Row(Modifier.padding(start = 8.dp, end = 16.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = onBack) { Text("← Back") }
+                Text(
+                    name,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
+                )
+                if (activeId == sessionId) StatusBadge("Active", StatusColors.Good)
+            }
+            Row(
+                Modifier.padding(horizontal = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                TextButton(onClick = { renaming = true }, enabled = session != null) { Text("Rename") }
+                TextButton(onClick = { confirmDeleteSession = true }, enabled = session != null) { Text("Delete") }
+                if (activeId != null && activeId != sessionId) {
+                    TextButton(onClick = {
+                        store.makeActive(sessionId)
+                        activeId = sessionId
+                    }) { Text("Make active") }
+                }
+                Spacer(Modifier.weight(1f))
+                if (included > 0) {
+                    ExportButton(sessionName = name, loadObservations = { store.includedObservations(sessionId) })
                 }
             }
-            val list = observations
+
             when {
                 list == null -> Text("Loading…", Modifier.padding(16.dp))
                 list.isEmpty() -> Text(
-                    "No bearings saved yet. Go back and take one. You'll need at least two, " +
-                        "from different places, to locate an object.",
+                    "No bearings in this session yet. New bearings go into the active session. You'll need " +
+                        "at least two, from different places, to locate the object.",
                     Modifier.padding(16.dp),
                 )
                 else -> {
@@ -105,7 +139,7 @@ fun ObservationsScreen(
                     ) {
                         item {
                             Text(
-                                "${list.size} saved. Tick the bearings of the same object, then show them on the map. " +
+                                "${list.size} bearings. Ticked ones are used on the map and in exports. " +
                                     "Best results: places far apart, with sightlines crossing at a wide angle.",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -115,22 +149,22 @@ fun ObservationsScreen(
                             ObservationRow(
                                 store = store,
                                 obs = obs,
-                                checked = obs.id in selected,
-                                onCheckedChange = { on -> onSelectionChange(if (on) selected + obs.id else selected - obs.id) },
+                                onCheckedChange = { on -> scope.launch { store.setIncluded(obs, on) } },
+                                onMove = { toMove = obs },
                                 onDelete = { toDelete = obs },
                             )
                         }
                     }
                     Button(
                         onClick = onShowMap,
-                        enabled = selected.size >= 2,
+                        enabled = included >= 2,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
                             .height(52.dp),
                     ) {
                         Text(
-                            if (selected.size >= 2) "Show ${selected.size} bearings on map" else "Tick at least 2 bearings",
+                            if (included >= 2) "Show $included bearings on map" else "Tick at least 2 bearings",
                             style = MaterialTheme.typography.titleMedium,
                         )
                     }
@@ -139,24 +173,50 @@ fun ObservationsScreen(
         }
     }
 
+    if (renaming) {
+        SessionNameDialog(
+            title = "Rename session",
+            initial = name,
+            confirmLabel = "Save",
+            onConfirm = { newName ->
+                renaming = false
+                scope.launch { store.renameSession(sessionId, newName) }
+            },
+            onDismiss = { renaming = false },
+        )
+    }
+    if (confirmDeleteSession) {
+        ConfirmDialog(
+            text = "Delete \"$name\" with all ${list?.size ?: 0} bearings and photos? This can't be undone.",
+            onConfirm = {
+                confirmDeleteSession = false
+                scope.launch { store.deleteSession(sessionId) }
+            },
+            onDismiss = { confirmDeleteSession = false },
+        )
+    }
     toDelete?.let { obs ->
         ConfirmDialog(
             text = "Delete this bearing and its photo?",
             onConfirm = {
                 toDelete = null
-                scope.launch { store.delete(obs); reload() }
+                scope.launch { store.delete(obs) }
             },
             onDismiss = { toDelete = null },
         )
     }
-    if (confirmDeleteAll) {
-        ConfirmDialog(
-            text = "Delete all saved bearings and photos? This can't be undone.",
-            onConfirm = {
-                confirmDeleteAll = false
-                scope.launch { store.deleteAll(); reload() }
+    toMove?.let { obs ->
+        MoveDialog(
+            store = store,
+            currentSessionId = sessionId,
+            onMove = { target ->
+                toMove = null
+                scope.launch {
+                    val targetId = target?.id ?: store.startSession(ObservationStore.defaultSessionName(), makeActive = false).id
+                    store.move(obs, targetId)
+                }
             },
-            onDismiss = { confirmDeleteAll = false },
+            onDismiss = { toMove = null },
         )
     }
 }
@@ -165,17 +225,17 @@ fun ObservationsScreen(
 private fun ObservationRow(
     store: ObservationStore,
     obs: Observation,
-    checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
+    onMove: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val thumbPx = with(LocalDensity.current) { 72.dp.roundToPx() }
-    val thumbnail by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, obs.id) {
+    val thumbnail by produceState<ImageBitmap?>(null, obs.id) {
         value = store.loadThumbnail(obs, thumbPx)?.asImageBitmap()
     }
     Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(end = 12.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Checkbox(checked = checked, onCheckedChange = onCheckedChange)
+        Row(Modifier.padding(end = 4.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = obs.included, onCheckedChange = onCheckedChange)
             val thumbModifier = Modifier
                 .size(72.dp)
                 .clip(RoundedCornerShape(8.dp))
@@ -206,9 +266,46 @@ private fun ObservationRow(
                     color = if (color == StatusColors.Good) MaterialTheme.colorScheme.onSurfaceVariant else color,
                 )
             }
-            TextButton(onClick = onDelete) { Text("Delete") }
+            Column(horizontalAlignment = Alignment.End) {
+                TextButton(onClick = onMove) { Text("Move") }
+                TextButton(onClick = onDelete) { Text("Delete") }
+            }
         }
     }
+}
+
+/** Pick another session to move a bearing into. A null target means "a new session". */
+@Composable
+private fun MoveDialog(
+    store: ObservationStore,
+    currentSessionId: Long,
+    onMove: (Session?) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val sessionsFlow = remember(store) { store.sessions() }
+    val sessions by sessionsFlow.collectAsStateWithLifecycle(emptyList())
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Move bearing to…") },
+        text = {
+            Column(
+                Modifier
+                    .heightIn(max = 360.dp)
+                    .verticalScroll(rememberScrollState())
+            ) {
+                sessions.filter { it.id != currentSessionId }.forEach { s ->
+                    TextButton(onClick = { onMove(s) }, modifier = Modifier.fillMaxWidth()) {
+                        Text(s.name, Modifier.fillMaxWidth(), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                TextButton(onClick = { onMove(null) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("+ A new session", Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {},
+        dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+    )
 }
 
 @Composable

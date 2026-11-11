@@ -1,13 +1,34 @@
 package com.triangulation.locator.data
 
+import androidx.room.Entity
+import androidx.room.ForeignKey
+import androidx.room.Index
+import androidx.room.PrimaryKey
 import org.json.JSONObject
 
 /**
  * One sighting of the target: where the phone was, which way it pointed, and the photo.
- * The solver (Phase 3) needs two or more of these.
+ * The solver needs two or more of these. Stored as one row of the `observations` table;
+ * the photo is a separate JPEG file (see [ObservationStore]).
  */
+@Entity(
+    tableName = "observations",
+    foreignKeys = [
+        ForeignKey(
+            entity = Session::class,
+            parentColumns = ["id"],
+            childColumns = ["sessionId"],
+            onDelete = ForeignKey.CASCADE,
+        ),
+    ],
+    indices = [Index("sessionId")],
+)
 data class Observation(
-    val id: String,
+    @PrimaryKey val id: String,
+    /** The session (group of bearings of one object) this belongs to. Set by [ObservationStore.save]. */
+    val sessionId: Long = 0,
+    /** Ticked = used for the fix on the map and in exports. */
+    val included: Boolean = true,
     /** Wall-clock time of the photo, milliseconds since 1970 (UTC). */
     val timeMillis: Long,
     val latitude: Double,

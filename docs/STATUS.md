@@ -13,18 +13,24 @@ _Last updated: 2026-11-11_
 | 1. Sensor test screen | Done, built and run on a phone | `phase-1-sensor-test` | #1 → `main` |
 | 2. Capture flow | Done, built and run on a phone (indoors only) | `phase-2-capture-flow` | #2 → `phase-1-sensor-test` |
 | 3. Solve and map (+ 3+ bearing fit) | Done, built and run on a phone; map displays correctly | `phase-3-solve-and-map` | #3 → `phase-2-capture-flow` |
-| 4. History (Room) + GPX/GeoJSON export | Not started | | |
+| 4. History (Room sessions) + GPX/GeoJSON export | Done, built and run on a phone (old bearings migrated, new sessions work) | `phase-4-history-export` | #4 → `phase-3-solve-and-map` |
 | 5. Tailnet sharing | Not started | | |
 | 6. Single-photo mode | Not started | | |
 
-**Immediate next step:** plan Phase 4 (Room sessions + GPX/GeoJSON export) and get it agreed
-before coding. Create `phase-4-...` from `phase-3-solve-and-map`; its PR targets that branch.
+**Immediate next step:** plan Phase 5 (tailnet sharing) and get it agreed before coding.
+Create `phase-5-...` from `phase-4-history-export`; its PR targets that branch.
+
+Phase 4 notes: KSP 2.3.10 + Room 2.8.4 build fine with AGP 9.5.1 built-in Kotlin. The legacy
+JSON bearings migrated into "Earlier bearings" with their photos on the owner's phone.
 
 **Not yet verified anywhere:**
 - Real-world accuracy outdoors. Nobody has yet checked a bearing against a known landmark,
   tested the tap-offset correction away from the photo centre, or triangulated a known point.
   The owner has so far only tested indoors.
-- The owner hasn't confirmed running the solver unit tests (`app/src/test`, `SolverTest.kt`).
+- The owner hasn't confirmed running the unit tests (`app/src/test`: `SolverTest.kt`,
+  `SessionExportTest.kt`).
+- Export (GeoJSON/GPX) hasn't been tried on the phone, and no exported file has been opened in
+  another app yet.
 
 ## How the owner works
 
@@ -49,8 +55,24 @@ before coding. Create `phase-4-...` from `phase-3-solve-and-map`; its PR targets
 - **Tap offset** uses the focal length from Camera2 characteristics, with a pitch correction
   (`BearingMath.tapOffsetDeg`). It falls back to an assumed 50° field of view if the phone
   doesn't report its lens.
-- **Storage until Phase 4:** a JPEG (≤1920 px) plus a JSON file per observation in app-private
-  `filesDir/observations`. Not in the Gallery, and backups are disabled. Room comes in Phase 4.
+- **Storage (Phase 4):** Room database `triangulation.db` with `sessions` and `observations`
+  tables (`data/Database.kt`), and photos as JPEGs (≤1920 px) in app-private
+  `filesDir/observations`. Not in the Gallery, and backups are disabled. Schema version 1;
+  any later change needs a real `Migration` (no destructive fallback). Schemas are exported to
+  `app/schemas/`. Room 2.8.4 and KSP 2.3.10.
+- **Legacy JSON migration:** on first use, `ObservationStore` moves the Phase 2/3 JSON files
+  into an "Earlier bearings" session, then deletes the JSON (it retries on failure). This code
+  can be removed once no phone has old data.
+- **Sessions (owner agreed):** new bearings go into the *active* session
+  (`Settings.activeSessionId`). If it isn't set, the most recently used session is used, and a
+  new one is created on the first save if none exists. "New session" is on the capture screen.
+  Each bearing has an `included` flag (its tick), saved in the database.
+- **Export (owner agreed):** "Save to…" through the Storage Access Framework
+  (`CreateDocument`), with no share sheet and no permissions. GeoJSON (RFC 7946,
+  counter-clockwise ring, extra `properties` on the FeatureCollection) and GPX 1.1
+  (waypoints, a route per sightline, and the uncertainty area as a closed track). Only ticked
+  bearings are exported. MIME type `application/octet-stream`, so pickers keep the extension.
+  Pure Kotlin in `export/SessionExport.kt`, with unit tests.
 - **Navigation:** a simple enum in `MainActivity`, with no navigation library.
 - **Multi-bearing solve was pulled into Phase 3** at the owner's request: weighted least
   squares for 3+ bearings, with an uncertainty ellipse scaled up when bearings disagree.
@@ -68,7 +90,8 @@ before coding. Create `phase-4-...` from `phase-3-solve-and-map`; its PR targets
 - Android Studio 2026.2 (installed at `D:\Android\Android Studio`) runs Gradle on **Java 25**,
   so Gradle must be ≥ 9.1. Studio upgraded the project to **AGP 9.5.1 / Gradle 9.6.0** on
   first sync. AGP 9 has built-in Kotlin, so don't apply `kotlin-android`.
-- Library versions: Compose BOM 2025.09.00, CameraX 1.4.2, osmdroid 6.1.20, JUnit 4.13.2.
+- Library versions: Compose BOM 2025.09.00, CameraX 1.4.2, osmdroid 6.1.20, Room 2.8.4
+  (KSP 2.3.10), JUnit 4.13.2.
   compileSdk/targetSdk 36, minSdk 26.
 - No `gradlew` scripts or wrapper jar are committed. Studio uses `gradle-wrapper.properties` directly.
 - **Python is not installed.** Use the editor tools or Git Bash for file edits.
@@ -81,7 +104,5 @@ before coding. Create `phase-4-...` from `phase-3-solve-and-map`; its PR targets
 
 - Tap offset ignores roll (the app warns when roll > 5°).
 - The flat-grid maths is accurate within about 50 km; beyond that the app warns.
-- Ticked bearings aren't kept if Android kills the app on the map screen (the map then says
-  to select bearings).
-- Phase 4 (still to plan): Room sessions to group bearings of the same object, and
-  GPX/GeoJSON export.
+- Exports don't include photos. A ZIP option could be added later if wanted.
+- No "undo" for deletes; there are confirmation dialogs instead.
