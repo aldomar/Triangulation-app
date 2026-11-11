@@ -1,0 +1,23 @@
+# Gradle / build output
+.gradle/
+build/
+/local.properties
+/captures
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+.kotlin/
+
+# Signing keys - NEVER commit these
+*.jks
+*.keystore
+keystore.properties
+
+# OS
+.DS_Store
+Thumbs.db
