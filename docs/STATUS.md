@@ -14,23 +14,47 @@ _Last updated: 2026-11-11_
 | 2. Capture flow | Done, built and run on a phone (indoors only) | `phase-2-capture-flow` | #2 → `phase-1-sensor-test` |
 | 3. Solve and map (+ 3+ bearing fit) | Done, built and run on a phone; map displays correctly | `phase-3-solve-and-map` | #3 → `phase-2-capture-flow` |
 | 4. History (Room sessions) + GPX/GeoJSON export | Done, built and run on a phone (old bearings migrated, new sessions work) | `phase-4-history-export` | #4 → `phase-3-solve-and-map` |
+| 4b. Car mode + driving test (added by owner before Phase 5) | Built and run on a phone; DB upgrade v1→v2 kept all bearings; car-mode UI, line-up checks and driving-test card behave correctly when stationary; all tests pass. **Not yet road-tested.** | `phase-4b-car-mode` | #5 → `phase-4-history-export` |
 | 5. Tailnet sharing | Not started | | |
 | 6. Single-photo mode | Not started | | |
 
 **Immediate next step:** plan Phase 5 (tailnet sharing) and get it agreed before coding.
-Create `phase-5-...` from `phase-4-history-export`; its PR targets that branch.
+Create `phase-5-...` from `phase-4b-car-mode`; its PR targets that branch.
+**Pending whenever the owner has time:** road-test the driving test, then car-mode bearings.
+Use the results to tune the guesses listed below.
 
-Phase 4 notes: KSP 2.3.10 + Room 2.8.4 build fine with AGP 9.5.1 built-in Kotlin. The legacy
+**Car mode (4b), agreed design.** The owner chose to build the driving test and car mode
+together, then road-test later.
+- In a car the compass is unusable (metal distorts it). Car mode uses `TYPE_GAME_ROTATION_VECTOR`
+  (gyroscope + accelerometer, no magnetometer), "lined up" by the user against the GPS
+  direction of travel (`Location.bearing`). The line-up rule is: crosshair on a distant point
+  straight down the road, at ≥15 km/h, GPS direction accuracy ≤3°, no turn >2° in the last 3 s.
+- A line-up is valid only for the gyroscope run it was made in (`runId`). The gyroscope flow is
+  shared (`shareIn`) so the readout, line-up and capture use one sensor run. Leaving the capture
+  screen or sleeping means lining up again.
+- Car mode is off at every app start (`CarSession`, in memory only). The "passenger only"
+  notice is shown the first time it's turned on (`Settings.carSafetyAcknowledged`), and a
+  banner is always visible while it's on.
+- Car bearings: `magneticHeadingDeg` holds the TRUE heading, `declinationDeg` = 0,
+  `compassAccuracy` = -1, `headingFromCar` = true, plus `speedMps` and `lineUpAgeSeconds`.
+  The position is moved on from the last GPS fix to the photo time (capped at 3 s).
+- Default error band = max(2°, GPS direction accuracy) + 1°/min since line-up
+  (`CarMath.DRIFT_DEG_PER_MIN`, to be tuned from the driving test).
+- The driving test is on the Sensors screen; the gyroscope runs only after "Start driving
+  test". It counts samples only on straight stretches above 20 km/h.
+- Database v2 via Room `AutoMigration(1, 2)` (adds the three columns).
+- **Untuned guesses to revisit after road tests:** drift 1°/min, line-up wobble limit 1.5°,
+  stale after 3 min, turn threshold 2°.
+
+Phase 4 notes: all unit tests pass, and an exported file opened correctly in Google Earth.
+KSP 2.3.10 + Room 2.8.4 build fine with AGP 9.5.1 built-in Kotlin. The legacy
 JSON bearings migrated into "Earlier bearings" with their photos on the owner's phone.
 
 **Not yet verified anywhere:**
 - Real-world accuracy outdoors. Nobody has yet checked a bearing against a known landmark,
   tested the tap-offset correction away from the photo centre, or triangulated a known point.
   The owner has so far only tested indoors.
-- The owner hasn't confirmed running the unit tests (`app/src/test`: `SolverTest.kt`,
-  `SessionExportTest.kt`).
-- Export (GeoJSON/GPX) hasn't been tried on the phone, and no exported file has been opened in
-  another app yet.
+- Car mode and the driving test haven't been used in a car yet.
 
 ## How the owner works
 

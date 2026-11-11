@@ -73,6 +73,17 @@ import com.triangulation.locator.data.BearingMath
 import com.triangulation.locator.data.Observation
 import com.triangulation.locator.data.ObservationStore
 import com.triangulation.locator.data.Session
+import com.triangulation.locator.data.Settings
+import com.triangulation.locator.car.CarMath
+import com.triangulation.locator.car.CourseFix
+import com.triangulation.locator.car.LineUp
+import com.triangulation.locator.sensors.GyroState
+import com.triangulation.locator.sensors.hasGyroHeading
+import com.triangulation.locator.solver.LatLon
+import android.os.SystemClock
+import androidx.compose.material3.Switch
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.flowOf
 import androidx.compose.ui.text.style.TextOverflow
 import com.triangulation.locator.sensors.OrientationState
 import com.triangulation.locator.sensors.circularMeanDeg
@@ -112,6 +123,19 @@ private class PendingCapture(
     val compassAccuracy: Int,
     /** Null if the phone didn't report its lens details. */
     val focalFraction: Double?,
+    /** Set in car mode. Then [magneticHeadingDeg] is the TRUE heading and [declinationDeg] is 0. */
+    val car: CarCapture? = null,
+)
+
+/** Car-mode details of a capture. */
+private class CarCapture(
+    /** Where the car was at the moment of the photo (moved on from the last GPS fix). */
+    val position: LatLon,
+    val speedMps: Double?,
+    val lineUpAgeSeconds: Double,
+    /** How far the GPS fix was moved forward in time to the photo, seconds. */
+    val extrapolatedSeconds: Double,
+    val defaultErrorDeg: Double,
 )
 
 private sealed interface Step {
@@ -134,10 +158,45 @@ fun CaptureScreen(
     val hasCamera = permissions[Manifest.permission.CAMERA]
     val hasFineLocation = permissions[Manifest.permission.ACCESS_FINE_LOCATION]
 
+    // Car mode uses the gyroscope instead of the compass; only one of the two runs at a time.
+    val settings = remember { Settings(context.applicationContext) }
+    val hasGyro = remember { context.getSystemService(SensorManager::class.java).hasGyroHeading() }
+    val carOn = CarSession.enabled && hasGyro
+    var askCarSafety by remember { mutableStateOf(false) }
+    var liningUp by remember { mutableStateOf(false) }
+
     val orientationFlow = rememberOrientationFlow()
-    val orientation by rememberOrientationState(orientationFlow)
+    val activeOrientationFlow = remember(carOn) { if (carOn) flowOf(OrientationState.Waiting) else orientationFlow }
+    val orientation by rememberOrientationState(activeOrientationFlow)
+    val gyroFlow = rememberSharedGyroFlow()
+    val activeGyroFlow = remember(carOn) { if (carOn) gyroFlow else flowOf(GyroState.Waiting) }
+    val gyro by activeGyroFlow.collectAsStateWithLifecycle(GyroState.Waiting)
+    val gyroReading = gyro as? GyroState.Reading
+    // A line-up only counts for the gyroscope run it was made in.
+    val lineUp = CarSession.lineUp?.takeIf { gyroReading != null && it.runId == gyroReading.runId }
+
     val gpsState = rememberGpsState(enabled = hasFineLocation)
     val gps = gpsState.value
+    val fixes = rememberCourseFixes(gps?.location)
+
+    fun setCarMode(on: Boolean) {
+        if (on && !settings.carSafetyAcknowledged) {
+            askCarSafety = true
+            return
+        }
+        CarSession.enabled = on
+        if (!on) CarSession.lineUp = null
+    }
+    if (askCarSafety) {
+        CarSafetyDialog(
+            onAccept = {
+                askCarSafety = false
+                settings.carSafetyAcknowledged = true
+                setCarMode(true)
+            },
+            onCancel = { askCarSafety = false },
+        )
+    }
 
     var step by remember { mutableStateOf<Step>(Step.Aiming) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
@@ -211,6 +270,27 @@ fun CaptureScreen(
                     onOpen = { activeSession?.let { onOpenSession(it.id) } },
                     onNew = { namingSession = true },
                 )
+                CarModeBar(
+                    available = hasGyro,
+                    on = carOn,
+                    lineUp = lineUp,
+                    lineUpLost = CarSession.lineUp != null && lineUp == null,
+                    liningUp = liningUp,
+                    onToggle = ::setCarMode,
+                    onLineUp = {
+                        liningUp = true
+                        scope.launch {
+                            when (val r = performLineUp(gyroFlow) { fixes.toList() }) {
+                                is LineUpResult.Done -> {
+                                    CarSession.lineUp = r.lineUp
+                                    Toast.makeText(context, "Lined up", Toast.LENGTH_SHORT).show()
+                                }
+                                is LineUpResult.Failed -> Toast.makeText(context, r.message, Toast.LENGTH_LONG).show()
+                            }
+                            liningUp = false
+                        }
+                    },
+                )
 
                 if (!hasCamera || !hasFineLocation) {
                     PermissionsNeeded(
@@ -240,12 +320,21 @@ fun CaptureScreen(
                         }
                     }
 
-                    LiveReadout(orientation, gps?.location, gps?.providerEnabled != false)
+                    if (carOn) {
+                        CarReadout(gyroReading, lineUp, fixes.lastOrNull(), gps?.location, gps?.providerEnabled != false)
+                    } else {
+                        LiveReadout(orientation, gps?.location, gps?.providerEnabled != false)
+                    }
 
                     val blocker = when {
                         imageCapture == null -> "Starting camera…"
                         gps?.providerEnabled == false -> "Turn on location (GPS) to take a bearing."
                         gps?.location == null -> "Waiting for a GPS fix… Go outside with a clear view of the sky."
+                        carOn && gyro == GyroState.Unavailable -> "This phone has no gyroscope, so car mode can't be used."
+                        carOn && gyroReading == null -> "Starting gyroscope…"
+                        carOn && lineUp == null ->
+                            "Line up first: on a straight road, put the crosshair on a distant point straight ahead and tap Line up."
+                        carOn -> null
                         orientation == OrientationState.Unavailable -> "This phone has no compass, so it can't take bearings."
                         orientation !is OrientationState.Reading -> "Starting compass…"
                         else -> null
@@ -274,7 +363,12 @@ fun CaptureScreen(
                                 imageCapture?.let { capture ->
                                     step = Step.Steadying
                                     scope.launch {
-                                        val pending = takeBearing(capture, orientationFlow, { gpsState.value?.location }, optics)
+                                        val carLineUp = lineUp
+                                        val pending = if (carOn && carLineUp != null) {
+                                            takeCarBearing(capture, gyroFlow, carLineUp, { gpsState.value?.location }, optics)
+                                        } else {
+                                            takeBearing(capture, orientationFlow, { gpsState.value?.location }, optics)
+                                        }
                                         if (pending == null) {
                                             Toast.makeText(context, "Couldn't take the bearing. Please try again.", Toast.LENGTH_LONG).show()
                                         }
@@ -307,18 +401,7 @@ private suspend fun takeBearing(
     optics: CameraOptics?,
 ): PendingCapture? {
     try {
-        val (photo, samples) = coroutineScope {
-            val samples = mutableListOf<OrientationState.Reading>()
-            val sampling = async {
-                withTimeoutOrNull(STEADY_MS) {
-                    orientationFlow.filterIsInstance<OrientationState.Reading>().collect { samples += it }
-                }
-            }
-            delay(STEADY_MS / 2)
-            val photo = capture.takeUprightPhoto()
-            sampling.await()
-            photo to samples.toList()
-        }
+        val (photo, samples) = photoWithSamples(capture, orientationFlow.filterIsInstance<OrientationState.Reading>())
         val location = currentLocation()
         if (samples.isEmpty() || location == null) return null
         val headings = samples.map { it.rawMagneticHeadingDeg }
@@ -340,6 +423,150 @@ private suspend fun takeBearing(
     } catch (e: Exception) {
         Log.e(TAG, "Capture failed", e)
         return null
+    }
+}
+
+/** Collects [readings] for [STEADY_MS] and takes the photo halfway through. */
+private suspend fun <T> photoWithSamples(capture: ImageCapture, readings: Flow<T>): Pair<Bitmap, List<T>> =
+    coroutineScope {
+        val samples = mutableListOf<T>()
+        val sampling = async {
+            withTimeoutOrNull(STEADY_MS) { readings.collect { samples += it } }
+        }
+        delay(STEADY_MS / 2)
+        val photo = capture.takeUprightPhoto()
+        sampling.await()
+        photo to samples.toList()
+    }
+
+/**
+ * Car mode: like [takeBearing], but the direction comes from the gyroscope lined up with the
+ * GPS direction of travel, and the position is moved on to the moment of the photo.
+ */
+private suspend fun takeCarBearing(
+    capture: ImageCapture,
+    gyroFlow: Flow<GyroState>,
+    lineUp: LineUp,
+    currentLocation: () -> Location?,
+    optics: CameraOptics?,
+): PendingCapture? {
+    try {
+        val startNanos = SystemClock.elapsedRealtimeNanos()
+        val (photo, readings) = photoWithSamples(capture, gyroFlow.filterIsInstance<GyroState.Reading>())
+        val photoNanos = startNanos + STEADY_MS * 1_000_000L / 2
+        val samples = readings.filter { it.runId == lineUp.runId }
+        val location = currentLocation()
+        if (samples.isEmpty() || location == null) return null
+        val headings = samples.map { CarMath.trueHeading(it.rawRelativeHeadingDeg, lineUp) }
+
+        val fixPosition = LatLon(location.latitude, location.longitude)
+        val secondsAfterFix = (photoNanos - location.elapsedRealtimeNanos) / 1e9
+        val position = if (location.hasSpeed() && location.hasBearing()) {
+            CarMath.extrapolate(fixPosition, location.speed.toDouble(), location.bearing.toDouble(), secondsAfterFix)
+        } else {
+            fixPosition
+        }
+        val lineUpAge = lineUp.ageSeconds(photoNanos)
+        return PendingCapture(
+            photo = photo,
+            timeMillis = System.currentTimeMillis(),
+            location = location,
+            locationAgeSeconds = location.ageSeconds(),
+            magneticHeadingDeg = normalize360(circularMeanDeg(headings)), // true heading in car mode
+            headingSpreadDeg = circularSpreadDeg(headings),
+            declinationDeg = 0.0,
+            pitchDeg = circularMeanDeg(samples.map { it.rawPitchDeg }),
+            rollDeg = circularMeanDeg(samples.map { it.rawRollDeg }),
+            compassAccuracy = -1,
+            focalFraction = optics?.focalFraction(photo.width, photo.height),
+            car = CarCapture(
+                position = position,
+                speedMps = if (location.hasSpeed()) location.speed.toDouble() else null,
+                lineUpAgeSeconds = lineUpAge,
+                extrapolatedSeconds = secondsAfterFix,
+                defaultErrorDeg = CarMath.defaultErrorDeg(lineUpAge, lineUp.courseAccuracyDeg),
+            ),
+        )
+    } catch (e: CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        Log.e(TAG, "Car capture failed", e)
+        return null
+    }
+}
+
+/** Car mode switch, passenger warning, and line-up status. */
+@Composable
+private fun CarModeBar(
+    available: Boolean,
+    on: Boolean,
+    lineUp: LineUp?,
+    lineUpLost: Boolean,
+    liningUp: Boolean,
+    onToggle: (Boolean) -> Unit,
+    onLineUp: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Car mode", style = MaterialTheme.typography.bodyMedium)
+            Spacer(Modifier.width(8.dp))
+            Switch(checked = on, onCheckedChange = onToggle, enabled = available)
+            Spacer(Modifier.width(8.dp))
+            if (!available) {
+                Text(
+                    "Needs a gyroscope",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else if (on) {
+                val now = rememberNowTicker()
+                Text(
+                    when {
+                        lineUp != null -> "Lined up ${minutesSeconds(lineUp.ageSeconds(now))} ago"
+                        lineUpLost -> "Line up again"
+                        else -> "Not lined up"
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = if (lineUp != null && lineUp.ageSeconds(now) <= CarMath.LINE_UP_STALE_S) {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    } else {
+                        StatusColors.Poor
+                    },
+                    modifier = Modifier.weight(1f),
+                )
+                Button(onClick = onLineUp, enabled = !liningUp) { Text(if (liningUp) "Hold still…" else "Line up") }
+            }
+        }
+        if (on) WarningText("Passenger only. Never use the app while driving.")
+    }
+}
+
+/** Car mode's version of the live strip: gyroscope heading, speed and GPS. */
+@Composable
+private fun CarReadout(gyro: GyroState.Reading?, lineUp: LineUp?, fix: CourseFix?, location: Location?, gpsOn: Boolean) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (gyro != null && lineUp != null) {
+                val heading = CarMath.trueHeading(gyro.relativeHeadingDeg, lineUp)
+                Text(
+                    "${fmt(heading, 0)}° ${cardinal(heading)}",
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text("true", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            Spacer(Modifier.weight(1f))
+            fix?.let { StatusBadge("${(it.speedMps * 3.6).roundToInt()} km/h", StatusColors.Good) }
+            val accuracy = location?.takeIf { it.hasAccuracy() }?.accuracy?.toDouble()
+            when {
+                !gpsOn -> StatusBadge("GPS off", StatusColors.Bad)
+                accuracy != null -> StatusBadge("GPS ±${fmt(accuracy, 0)} m", gpsAccuracyColor(accuracy))
+                else -> StatusBadge("GPS…", StatusColors.Bad)
+            }
+        }
+        if (gyro != null && abs(gyro.rollDeg) > 5) {
+            WarningText("Phone is tilted sideways ${fmt(abs(gyro.rollDeg), 0)}°. Hold it level.")
+        }
     }
 }
 
@@ -524,7 +751,9 @@ private fun ReviewScreen(
     val imageBitmap = remember(photo) { photo.asImageBitmap() }
     var tapX by remember { mutableFloatStateOf(0.5f) }
     var tapY by remember { mutableFloatStateOf(0.5f) }
-    var errorDeg by remember { mutableFloatStateOf(BearingMath.defaultErrorDeg(pending.compassAccuracy).toFloat()) }
+    var errorDeg by remember {
+        mutableFloatStateOf((pending.car?.defaultErrorDeg ?: BearingMath.defaultErrorDeg(pending.compassAccuracy)).toFloat())
+    }
     var saving by remember { mutableStateOf(false) }
 
     val focal = pending.focalFraction ?: BearingMath.fallbackFocalFraction()
@@ -650,6 +879,17 @@ private fun reviewWarnings(p: PendingCapture): List<String> = buildList {
     if (gpsAccuracy != null && gpsAccuracy > 50) add("GPS accuracy was poor (±${gpsAccuracy.roundToInt()} m).")
     if (p.locationAgeSeconds > 10) add("The GPS position was ${p.locationAgeSeconds} s old.")
     if (p.focalFraction == null) add("This phone didn't report its lens details, so the tap correction is approximate.")
+    p.car?.let { car ->
+        if (car.lineUpAgeSeconds > CarMath.LINE_UP_STALE_S) {
+            add(
+                "It's been ${minutesSeconds(car.lineUpAgeSeconds)} since lining up, so the gyroscope may have " +
+                    "drifted (the error band allows for this). Line up again soon."
+            )
+        }
+        if (abs(car.extrapolatedSeconds) > 2) {
+            add("The GPS fix was ${fmt(car.extrapolatedSeconds, 1)} s old; the position was estimated from speed.")
+        }
+    }
 }
 
 private fun buildObservation(
@@ -665,8 +905,8 @@ private fun buildObservation(
     return Observation(
         id = id,
         timeMillis = p.timeMillis,
-        latitude = location.latitude,
-        longitude = location.longitude,
+        latitude = p.car?.position?.lat ?: location.latitude,
+        longitude = p.car?.position?.lon ?: location.longitude,
         altitudeM = if (location.hasAltitude()) location.altitude else null,
         gpsAccuracyM = if (location.hasAccuracy()) location.accuracy.toDouble() else null,
         magneticHeadingDeg = p.magneticHeadingDeg,
@@ -684,5 +924,8 @@ private fun buildObservation(
         photoFileName = "$id.jpg",
         photoWidth = p.photo.width,
         photoHeight = p.photo.height,
+        headingFromCar = p.car != null,
+        speedMps = p.car?.speedMps,
+        lineUpAgeSeconds = p.car?.lineUpAgeSeconds,
     )
 }

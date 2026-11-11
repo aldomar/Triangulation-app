@@ -1,5 +1,6 @@
 package com.triangulation.locator.data
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
@@ -58,6 +59,16 @@ data class Observation(
     val photoFileName: String,
     val photoWidth: Int,
     val photoHeight: Int,
+    /**
+     * True if taken in car mode: the direction came from the gyroscope lined up with the GPS
+     * direction of travel, not the compass. Then [magneticHeadingDeg] holds the TRUE heading of
+     * the photo centre, [declinationDeg] is 0, and [compassAccuracy] is -1 (not used).
+     */
+    @ColumnInfo(defaultValue = "0") val headingFromCar: Boolean = false,
+    /** Car mode: speed at the photo, metres per second. */
+    val speedMps: Double? = null,
+    /** Car mode: seconds between lining up and the photo. */
+    val lineUpAgeSeconds: Double? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", 1)
@@ -82,6 +93,9 @@ data class Observation(
         put("photoFileName", photoFileName)
         put("photoWidth", photoWidth)
         put("photoHeight", photoHeight)
+        put("headingFromCar", headingFromCar)
+        putOpt("speedMps", speedMps)
+        putOpt("lineUpAgeSeconds", lineUpAgeSeconds)
     }
 
     companion object {
@@ -107,6 +121,9 @@ data class Observation(
             photoFileName = o.getString("photoFileName"),
             photoWidth = o.getInt("photoWidth"),
             photoHeight = o.getInt("photoHeight"),
+            headingFromCar = o.optBoolean("headingFromCar", false),
+            speedMps = o.optDoubleOrNull("speedMps"),
+            lineUpAgeSeconds = o.optDoubleOrNull("lineUpAgeSeconds"),
         )
 
         private fun JSONObject.optDoubleOrNull(key: String): Double? =

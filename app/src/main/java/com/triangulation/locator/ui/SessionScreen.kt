@@ -259,12 +259,22 @@ private fun ObservationRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                val (label, color) = compassAccuracyLabel(obs.compassAccuracy)
-                Text(
-                    "Compass: $label",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (color == StatusColors.Good) MaterialTheme.colorScheme.onSurfaceVariant else color,
-                )
+                if (obs.headingFromCar) {
+                    Text(
+                        "Car mode" +
+                            (obs.speedMps?.let { ", ${(it * 3.6).roundToInt()} km/h" } ?: "") +
+                            (obs.lineUpAgeSeconds?.let { ", lined up ${minutesSeconds(it)} before" } ?: ""),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else {
+                    val (label, color) = compassAccuracyLabel(obs.compassAccuracy)
+                    Text(
+                        "Compass: $label",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (color == StatusColors.Good) MaterialTheme.colorScheme.onSurfaceVariant else color,
+                    )
+                }
             }
             Column(horizontalAlignment = Alignment.End) {
                 TextButton(onClick = onMove) { Text("Move") }

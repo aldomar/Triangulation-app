@@ -1,6 +1,7 @@
 package com.triangulation.locator.data
 
 import android.content.Context
+import androidx.room.AutoMigration
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Insert
@@ -13,10 +14,18 @@ import kotlinx.coroutines.flow.Flow
  * The app's database: one table of sessions and one of observations, kept in app-private
  * storage on the phone.
  *
- * When the tables change in a later version, raise [version] and add a Migration so existing
+ * When the tables change in a later version, raise [version] and add a migration so existing
  * bearings are kept. Room records each version's layout in `app/schemas/`.
+ *
+ * Versions: 1 = Phase 4. 2 = car mode (observations gained headingFromCar, speedMps,
+ * lineUpAgeSeconds; added automatically, existing rows get false/null).
  */
-@Database(entities = [Session::class, Observation::class], version = 1, exportSchema = true)
+@Database(
+    entities = [Session::class, Observation::class],
+    version = 2,
+    exportSchema = true,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
+)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun dao(): TriangulationDao
 

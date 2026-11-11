@@ -74,6 +74,8 @@ object SessionExport {
 
     private fun coord(value: Double): String = num(value, 7) ?: "0"
 
+    private fun headingSource(o: Observation) = if (o.headingFromCar) "car (GPS + gyroscope)" else "compass"
+
     private fun compassLabel(accuracy: Int) = when (accuracy) {
         3 -> "high"
         2 -> "medium"
@@ -142,7 +144,10 @@ object SessionExport {
                     "errorDeg" to number(o.errorDeg, 1),
                     "gpsAccuracyM" to number(o.gpsAccuracyM, 1),
                     "altitudeM" to number(o.altitudeM, 1),
-                    "compassAccuracy" to compassLabel(o.compassAccuracy),
+                    "headingSource" to headingSource(o),
+                    "compassAccuracy" to if (o.headingFromCar) null else compassLabel(o.compassAccuracy),
+                    "speedKmh" to number(o.speedMps?.let { it * 3.6 }, 0),
+                    "lineUpAgeSeconds" to number(o.lineUpAgeSeconds, 0),
                     "distanceToEstimateM" to number(s.fix?.distancesM?.get(i), 0),
                 ),
             )
@@ -232,7 +237,13 @@ object SessionExport {
                 val desc = buildString {
                     append("Bearing ${num(o.bearingDeg, 1)}° ±${num(o.errorDeg, 0)}°")
                     o.gpsAccuracyM?.let { append(", GPS ±${num(it, 0)} m") }
-                    append(", compass ${compassLabel(o.compassAccuracy)}")
+                    if (o.headingFromCar) {
+                        append(", car mode")
+                        o.speedMps?.let { append(" at ${num(it * 3.6, 0)} km/h") }
+                        o.lineUpAgeSeconds?.let { append(", lined up ${num(it, 0)} s before") }
+                    } else {
+                        append(", compass ${compassLabel(o.compassAccuracy)}")
+                    }
                     fix?.let { append(", ${num(it.distancesM[i], 0)} m to estimate") }
                 }
                 append("  <wpt ${latLonAttrs(LatLon(o.latitude, o.longitude))}>")
