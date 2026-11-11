@@ -32,6 +32,10 @@ sealed interface OrientationState {
         val accuracy: Int,
         /** The sensor's own heading error estimate, degrees, if the phone provides one. */
         val headingErrorDeg: Double?,
+        /** Unsmoothed values from this one sensor event, used for averaging at capture time. */
+        val rawMagneticHeadingDeg: Double = magneticHeadingDeg,
+        val rawPitchDeg: Double = pitchDeg,
+        val rawRollDeg: Double = rollDeg,
     ) : OrientationState
 }
 
@@ -84,6 +88,9 @@ fun SensorManager.orientationUpdates(): Flow<OrientationState> {
                         rollDeg = smoothed[2],
                         accuracy = magnetometerAccuracy ?: rotationAccuracy,
                         headingErrorDeg = headingError,
+                        rawMagneticHeadingDeg = normalize360(heading),
+                        rawPitchDeg = pitch,
+                        rawRollDeg = roll,
                     )
                 )
             }

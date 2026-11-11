@@ -36,6 +36,17 @@ When the sync finishes, the green ▶ (Run) button at the top becomes active.
 2. Click ▶ **Run**. The app is built, installed and opened on your phone.
 3. The app is now in your phone's app list as **Triangulation Locator**. You can unplug the phone.
 
+## Getting updates
+
+When the code changes (for example, after a new phase is added):
+
+1. In Android Studio, if a bar says **"Gradle files have changed"**, click **Sync Now**.
+2. Click ▶ **Run** again. Only changed parts are rebuilt, so this is much quicker than the first time.
+   Your saved bearings are kept.
+
+Small changes to code can also be sent to a running app with **Apply Changes** (the ⚡ buttons
+next to Run). New permissions or libraries always need a full ▶ Run.
+
 ## Sharing the app with other phones (optional)
 
 To make an installable file (APK) for other people:
