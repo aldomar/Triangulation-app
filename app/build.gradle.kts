@@ -12,8 +12,8 @@ android {
         applicationId = "com.triangulation.locator"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.3.0"
     }
 
     buildTypes {
@@ -51,5 +51,7 @@ dependencies {
     implementation(libs.androidx.camera.camera2)
     implementation(libs.androidx.camera.lifecycle)
     implementation(libs.androidx.camera.view)
+    implementation(libs.osmdroid.android)
     debugImplementation(libs.androidx.compose.ui.tooling)
+    testImplementation(libs.junit)
 }

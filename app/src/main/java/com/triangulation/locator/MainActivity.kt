@@ -13,11 +13,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.triangulation.locator.data.ObservationStore
 import com.triangulation.locator.ui.CaptureScreen
+import com.triangulation.locator.ui.MapScreen
 import com.triangulation.locator.ui.ObservationsScreen
 import com.triangulation.locator.ui.SensorTestScreen
 import com.triangulation.locator.ui.theme.TriangulationTheme
 
-private enum class Screen { Capture, Sensors, Observations }
+private enum class Screen { Capture, Sensors, Observations, Map }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -28,9 +29,16 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val store = remember { ObservationStore(context.applicationContext) }
                 var screen by rememberSaveable { mutableStateOf(Screen.Capture) }
+                // Bearings ticked on the Saved screen (null = not chosen yet).
+                var selectedIds by remember { mutableStateOf<Set<String>?>(null) }
                 val backToCapture = { screen = Screen.Capture }
+                val backToSaved = { screen = Screen.Observations }
 
-                if (screen != Screen.Capture) BackHandler(onBack = backToCapture)
+                when (screen) {
+                    Screen.Capture -> Unit
+                    Screen.Map -> BackHandler(onBack = backToSaved)
+                    else -> BackHandler(onBack = backToCapture)
+                }
 
                 when (screen) {
                     Screen.Capture -> CaptureScreen(
@@ -39,7 +47,18 @@ class MainActivity : ComponentActivity() {
                         onOpenObservations = { screen = Screen.Observations },
                     )
                     Screen.Sensors -> SensorTestScreen(onBack = backToCapture)
-                    Screen.Observations -> ObservationsScreen(store, onBack = backToCapture)
+                    Screen.Observations -> ObservationsScreen(
+                        store = store,
+                        selectedIds = selectedIds,
+                        onSelectionChange = { selectedIds = it },
+                        onShowMap = { screen = Screen.Map },
+                        onBack = backToCapture,
+                    )
+                    Screen.Map -> MapScreen(
+                        store = store,
+                        observationIds = selectedIds.orEmpty().toList(),
+                        onBack = backToSaved,
+                    )
                 }
             }
         }

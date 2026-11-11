@@ -47,6 +47,15 @@ When the code changes (for example, after a new phase is added):
 Small changes to code can also be sent to a running app with **Apply Changes** (the ⚡ buttons
 next to Run). New permissions or libraries always need a full ▶ Run.
 
+## Checking the maths (optional)
+
+The project includes automatic tests for the triangulation calculations. They run on the
+computer, so no phone is needed:
+
+1. In the **Project** panel on the left, open `app → src → test`.
+2. Right-click the `java` folder and choose **Run 'Tests in 'java''**.
+3. A panel opens at the bottom. Green ticks mean the maths is working correctly.
+
 ## Sharing the app with other phones (optional)
 
 To make an installable file (APK) for other people:

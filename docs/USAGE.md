@@ -44,7 +44,58 @@ Tap **Saved** at the top of the main screen to see every bearing: its photo, dir
 error band, time, position and compass quality. Tap **Delete** to remove one, or
 **Delete all** to start fresh. Deleted bearings can't be recovered.
 
-The map that shows where the sightlines cross arrives in the next version.
+**Tick** the bearings that point at the same object (the two newest are ticked for you),
+then tap **Show … bearings on map**.
+
+## The map
+
+### Map background
+
+The first time you open the map, the app asks whether to show a map background.
+
+- **Show map** downloads map images from OpenStreetMap. It needs mobile data or Wi-Fi.
+  OpenStreetMap sees which area you're viewing, but none of your bearings, photos or position.
+  Areas you've already viewed are kept on the phone (up to about 50 MB), so they load again
+  without data.
+- **No thanks** shows a plain grid with latitude/longitude lines instead. Everything else works
+  the same, and the app uses no internet at all.
+
+Change your mind any time with the **Map background** switch at the top of the map.
+
+### Reading the map
+
+- **Coloured wedges** are the sightlines, one per bearing, labelled **A**, **B**, **C**… at the
+  spot where you stood. The solid line is the bearing. The shaded wedge is its error band:
+  the object should be somewhere inside it.
+- The **orange dot** marked **Target** is the estimated location of the object.
+- The **orange shaded area** around it is how far off the estimate might be. Smaller is better.
+- Pinch to zoom, and drag to move around.
+
+### The results panel (below the map)
+
+| Item | Meaning |
+| --- | --- |
+| Estimated location | Latitude and longitude of the object. Tap **Copy** to paste them into a message or another map app. |
+| Uncertainty | The object is probably within this distance of the estimated location. |
+| Best crossing angle | The widest angle between any two sightlines. Above 30° is good, and close to 90° is best. |
+| Lines miss the point by | With 3 or more bearings: how closely they agree. Small numbers mean they agree well. |
+| A, B, C… | Each bearing, its error band, and how far you were from the object. |
+
+### Warnings, and what to do
+
+| Warning | What to do |
+| --- | --- |
+| Shallow angle | The lines are close to parallel, so the point could be anywhere along them. Take another bearing from a place well off to the side. |
+| Error bands too wide | Calibrate the compass (figure-8), retake, or add a bearing from another direction. |
+| Bearings disagree | One bearing may be wrong, or the smoke moved. Untick bearings one at a time on the Saved screen to find the odd one out. |
+| Points away / no location | A bearing points away from where the others cross. Check it, or untick it. |
+| Over 50 km away | The estimate is less accurate this far out. |
+
+**More bearings help.** With three or more from different directions, the app finds the
+best-fit point and shows how well they agree.
+
+The result is an estimate to guide where to look, not a location to dispatch to.
+**For a real fire, call 911 or your local fire agency.**
 
 ## Sensor check screen
 
@@ -95,5 +146,6 @@ so calibration really matters.
 
 ## Battery and storage
 
-The camera, GPS and sensors run only while the app is on screen. They stop as soon as you
-switch away. Each saved photo is small (a few hundred KB).
+The camera, GPS, sensors and map run only while the app is on screen. They stop as soon as you
+switch away. Each saved photo is small (a few hundred KB). Map images are kept to about 50 MB,
+and Android can clear them if the phone runs low on space.

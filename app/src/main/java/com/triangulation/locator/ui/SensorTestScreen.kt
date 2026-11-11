@@ -84,7 +84,7 @@ fun SensorTestScreen(onBack: (() -> Unit)? = null) {
             TiltCard(orientation)
 
             Text(
-                "Nothing leaves this phone. The app has no internet permission.",
+                "Your position and bearings never leave this phone.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
