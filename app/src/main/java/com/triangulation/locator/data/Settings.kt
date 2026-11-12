@@ -50,7 +50,13 @@ class Settings(context: Context) {
         get() = prefs.getFloat(KEY_TILT_ERROR, TerrainMath.DEFAULT_TILT_ERROR_DEG.toFloat()).toDouble()
         set(value) = prefs.edit { putFloat(KEY_TILT_ERROR, value.toFloat()) }
 
+    /** The help guide has been shown once on first launch. */
+    var helpShown: Boolean
+        get() = prefs.getBoolean(KEY_HELP_SHOWN, false)
+        set(value) = prefs.edit { putBoolean(KEY_HELP_SHOWN, value) }
+
     private companion object {
+        const val KEY_HELP_SHOWN = "help_shown"
         const val KEY_ELEVATION = "elevation_downloads_enabled"
         const val KEY_SHOW_TERRAIN = "show_terrain"
         const val KEY_TILT_ERROR = "tilt_error_deg"

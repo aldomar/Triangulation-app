@@ -110,6 +110,8 @@ fun SessionScreen(
                     modifier = Modifier.weight(1f),
                 )
                 if (activeId == sessionId) StatusBadge("Active", StatusColors.Good)
+                Spacer(Modifier.width(8.dp))
+                HelpButton(HelpTopic.Session)
             }
             Row(
                 Modifier.padding(horizontal = 8.dp),

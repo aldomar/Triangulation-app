@@ -236,6 +236,8 @@ fun MapScreen(store: ObservationStore, sessionId: Long, onBack: () -> Unit) {
                 Text("Map background", style = MaterialTheme.typography.bodySmall)
                 Spacer(Modifier.width(6.dp))
                 Switch(checked = tilesOn, onCheckedChange = { setTiles(it) })
+                Spacer(Modifier.width(6.dp))
+                HelpButton(HelpTopic.Map)
             }
 
             HorizontalDivider(Modifier.zIndex(1f))

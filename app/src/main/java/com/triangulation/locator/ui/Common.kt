@@ -119,12 +119,18 @@ fun Context.openLocationSettings() {
 // ---------- Building blocks ----------
 
 @Composable
-fun ScreenHeader(title: String, onBack: (() -> Unit)? = null) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
+fun ScreenHeader(title: String, onBack: (() -> Unit)? = null, help: HelpTopic? = null) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         if (onBack != null) {
             TextButton(onClick = onBack) { Text("← Back") }
         }
-        Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            title,
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
+        if (help != null) HelpButton(help)
     }
 }
 

@@ -63,7 +63,7 @@ fun SessionsScreen(
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
             Row(Modifier.padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) { ScreenHeader("History", onBack) }
+                Box(Modifier.weight(1f)) { ScreenHeader("History", onBack, HelpTopic.History) }
                 TextButton(onClick = { naming = true }) { Text("New session") }
             }
             val list = summaries

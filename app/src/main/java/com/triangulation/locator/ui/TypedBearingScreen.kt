@@ -119,7 +119,7 @@ fun TypedBearingScreen(store: ObservationStore, sessionId: Long, onDone: () -> U
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            ScreenHeader("Add a bearing", onDone)
+            ScreenHeader("Add a bearing", onDone, HelpTopic.TypedBearing)
             Text(
                 "For a bearing someone else measured: a fire lookout on the radio, a hand compass, or another " +
                     "phone. It's used on the map like your own bearings. It has no photo, so it can't use the " +

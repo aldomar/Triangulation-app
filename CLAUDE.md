@@ -62,6 +62,8 @@ Work one phase at a time; each must build and run on a real phone. Status:
 - Storage is Room (sessions + observations). Schema changes need a proper `Migration`; never use destructive fallback. Room/KSP via KSP plugin (AGP 9 built-in Kotlin, no kapt).
 - Magnetic interference: `MagneticCheck` compares the magnetometer field strength with `GeomagneticField.fieldStrength`;
   more than 15% off = disturbed (warn, default error band ±15°, saved as `Observation.magneticFieldRatio`, DB v3).
+- Help: `ui/Help.kt` holds the in-app guide (`HelpTopic` sections, `HelpButton` "?" on every screen, shown as a
+  dialog so the screen underneath keeps its state). When a feature changes, update both `Help.kt` and `docs/USAGE.md`.
 - Compass checks (`CompassCheck` table, DB v5; `ui/LandmarkCheckScreen.kt`, maths in `solver/LandmarkCheck.kt`):
   measure and record only, never change bearings (owner's choice). `CaptureScreen` runs in check mode via `check: CheckTarget`.
 - Typed-in bearings (`Observation.typedIn`, DB v4): no photo (`photoFileName` blank; always check `hasPhoto` before touching files),

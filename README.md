@@ -67,3 +67,4 @@ see `docs/PHASE5-PLAN.md`.
 
 - [Installing the app](docs/INSTALL.md): building it on a computer and putting it on a phone
 - [Using the app](docs/USAGE.md): what each part of the screen means
+- Inside the app, tap the round **?** at the top of any screen for short help on that screen.
