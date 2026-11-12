@@ -1,6 +1,7 @@
 package com.triangulation.locator.export
 
 import com.triangulation.locator.data.Observation
+import com.triangulation.locator.sensors.MagneticCheck
 import com.triangulation.locator.solver.LatLon
 import com.triangulation.locator.solver.LocalProjection
 import com.triangulation.locator.solver.SolveResult
@@ -164,6 +165,8 @@ object SessionExport {
                     "compassAccuracy" to if (o.headingFromCar) null else compassLabel(o.compassAccuracy),
                     "speedKmh" to number(o.speedMps?.let { it * 3.6 }, 0),
                     "lineUpAgeSeconds" to number(o.lineUpAgeSeconds, 0),
+                    "magneticFieldRatio" to number(o.magneticFieldRatio, 2),
+                    "magneticInterference" to o.magneticFieldRatio?.let { MagneticCheck.isDisturbed(it) },
                     "distanceToEstimateM" to number(s.fix?.distancesM?.get(i), 0),
                 ),
             )
@@ -280,6 +283,9 @@ object SessionExport {
                         o.lineUpAgeSeconds?.let { append(", lined up ${num(it, 0)} s before") }
                     } else {
                         append(", compass ${compassLabel(o.compassAccuracy)}")
+                        o.magneticFieldRatio?.takeIf { MagneticCheck.isDisturbed(it) }?.let {
+                            append(", magnetic interference (field ${MagneticCheck.describe(it)})")
+                        }
                     }
                     fix?.let { append(", ${num(it.distancesM[i], 0)} m to estimate") }
                 }

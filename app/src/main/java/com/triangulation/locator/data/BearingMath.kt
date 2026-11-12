@@ -1,8 +1,10 @@
 package com.triangulation.locator.data
 
 import android.hardware.SensorManager
+import com.triangulation.locator.sensors.MagneticCheck
 import com.triangulation.locator.terrain.TerrainMath
 import kotlin.math.atan2
+import kotlin.math.max
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.tan
@@ -50,10 +52,16 @@ object BearingMath {
         obs.pitchDeg,
     )
 
-    /** Starting error band from compass calibration. The user can change it before saving. */
-    fun defaultErrorDeg(compassAccuracy: Int): Double = when (compassAccuracy) {
-        SensorManager.SENSOR_STATUS_ACCURACY_HIGH -> 5.0
-        SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM -> 10.0
-        else -> 15.0
+    /**
+     * Starting error band from compass calibration, widened to ±15° when the magnetic field was
+     * disturbed ([MagneticCheck]). The user can change it before saving.
+     */
+    fun defaultErrorDeg(compassAccuracy: Int, magneticFieldRatio: Double? = null): Double {
+        val fromCalibration = when (compassAccuracy) {
+            SensorManager.SENSOR_STATUS_ACCURACY_HIGH -> 5.0
+            SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM -> 10.0
+            else -> 15.0
+        }
+        return if (MagneticCheck.isDisturbed(magneticFieldRatio)) max(fromCalibration, 15.0) else fromCalibration
     }
 }

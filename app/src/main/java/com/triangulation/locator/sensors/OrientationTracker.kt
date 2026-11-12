@@ -13,6 +13,10 @@ import kotlin.math.asin
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.sqrt
+
+/** Smoothing for the field-strength readout (the magnetometer reports about 5 times a second). */
+private const val FIELD_SMOOTHING = 0.3
 
 /** Which way the back camera points, and how the phone is tilted. */
 sealed interface OrientationState {
@@ -36,6 +40,14 @@ sealed interface OrientationState {
         val rawMagneticHeadingDeg: Double = magneticHeadingDeg,
         val rawPitchDeg: Double = pitchDeg,
         val rawRollDeg: Double = rollDeg,
+        /**
+         * Strength of the magnetic field the phone measures, microtesla, lightly smoothed.
+         * Null until the magnetometer reports. Compared with Earth's expected field to spot
+         * interference ([MagneticCheck]).
+         */
+        val fieldStrengthUt: Double? = null,
+        /** The latest unsmoothed field strength, used for averaging at capture time. */
+        val rawFieldStrengthUt: Double? = fieldStrengthUt,
     ) : OrientationState
 }
 
@@ -59,9 +71,18 @@ fun SensorManager.orientationUpdates(): Flow<OrientationState> {
         val smoother = AngleSmoother()
         var rotationAccuracy = SensorManager.SENSOR_STATUS_UNRELIABLE
         var magnetometerAccuracy: Int? = null
+        var fieldUt: Double? = null
+        var rawFieldUt: Double? = null
 
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
+                if (event.sensor.type == Sensor.TYPE_MAGNETIC_FIELD) {
+                    val v = event.values
+                    val strength = sqrt((v[0] * v[0] + v[1] * v[1] + v[2] * v[2]).toDouble())
+                    rawFieldUt = strength
+                    fieldUt = fieldUt?.let { it + FIELD_SMOOTHING * (strength - it) } ?: strength
+                    return
+                }
                 if (event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
                 val (heading, pitch, roll) = cameraAngles(event.values, rotation)
 
@@ -80,6 +101,8 @@ fun SensorManager.orientationUpdates(): Flow<OrientationState> {
                         rawMagneticHeadingDeg = normalize360(heading),
                         rawPitchDeg = pitch,
                         rawRollDeg = roll,
+                        fieldStrengthUt = fieldUt,
+                        rawFieldStrengthUt = rawFieldUt,
                     )
                 )
             }
@@ -94,8 +117,8 @@ fun SensorManager.orientationUpdates(): Flow<OrientationState> {
 
         registerListener(listener, rotationSensor, SensorManager.SENSOR_DELAY_UI)
         // The magnetometer already runs for the rotation vector, so listening to it costs
-        // almost nothing. We only use it for its calibration status, which is more honest
-        // than the fused sensor's on many phones.
+        // almost nothing. We use it for its calibration status, which is more honest than the
+        // fused sensor's on many phones, and its field strength, to spot magnetic interference.
         magnetometer?.let { registerListener(listener, it, SensorManager.SENSOR_DELAY_NORMAL) }
 
         awaitClose { unregisterListener(listener) }

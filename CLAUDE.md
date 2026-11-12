@@ -60,6 +60,8 @@ Work one phase at a time; each must build and run on a real phone. Status:
   Tap offset uses focal length from Camera2 characteristics, pitch-corrected (`BearingMath.tapOffsetDeg`).
 - Photos stay in app-private storage, never the Gallery. Saved at most 1920 px on the long side.
 - Storage is Room (sessions + observations). Schema changes need a proper `Migration`; never use destructive fallback. Room/KSP via KSP plugin (AGP 9 built-in Kotlin, no kapt).
+- Magnetic interference: `MagneticCheck` compares the magnetometer field strength with `GeomagneticField.fieldStrength`;
+  more than 15% off = disturbed (warn, default error band ±15°, saved as `Observation.magneticFieldRatio`, DB v3).
 - Car mode: never use the compass inside a car; heading = gyroscope (game rotation vector) + line-up offset from GPS course. Passenger-only warnings must stay.
 - Export uses SAF `CreateDocument` only (user picks the location); the app itself never uploads exports.
 - Share (map screen) hands plain text to `ACTION_SEND` via the chooser, and "Open in map app" uses a `geo:` intent.

@@ -188,6 +188,18 @@ fun Location.declinationDeg(): Double =
         System.currentTimeMillis(),
     ).declination.toDouble()
 
+/**
+ * Strength Earth's magnetic field should have here, microtesla, from Android's built-in world
+ * model (works offline). Used to spot interference from nearby metal.
+ */
+fun Location.expectedFieldUt(): Double =
+    GeomagneticField(
+        latitude.toFloat(),
+        longitude.toFloat(),
+        if (hasAltitude()) altitude.toFloat() else 0f,
+        System.currentTimeMillis(),
+    ).fieldStrength / 1000.0 // nanotesla → microtesla
+
 fun Location.ageSeconds(nowElapsedNanos: Long = SystemClock.elapsedRealtimeNanos()): Long =
     ((nowElapsedNanos - elapsedRealtimeNanos) / 1_000_000_000L).coerceAtLeast(0)
 

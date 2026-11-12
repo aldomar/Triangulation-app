@@ -35,6 +35,8 @@ Where those lines of sight cross is roughly where the object is.
 - **Share the result:** send the estimated location, how sure it is, the time and an
   OpenStreetMap link to any app you choose (messages, email…), or open it in another map app.
 - **Sensor check:** a live readout of GPS accuracy, compass heading, tilt and compass calibration.
+- **Magnetic interference warning:** the app notices when nearby metal (a car, a fence, a
+  railing) is bending the compass, warns you, and widens the error band of that bearing.
 
 Sharing sessions between phones over a private network (Tailscale) is planned but on hold;
 see `docs/PHASE5-PLAN.md`.

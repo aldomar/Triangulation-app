@@ -86,6 +86,7 @@ import androidx.compose.material3.Switch
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.flowOf
 import androidx.compose.ui.text.style.TextOverflow
+import com.triangulation.locator.sensors.MagneticCheck
 import com.triangulation.locator.sensors.OrientationState
 import com.triangulation.locator.sensors.circularMeanDeg
 import com.triangulation.locator.sensors.circularSpreadDeg
@@ -124,6 +125,8 @@ private class PendingCapture(
     val compassAccuracy: Int,
     /** Null if the phone didn't report its lens details. */
     val focalFraction: Double?,
+    /** Measured ÷ expected magnetic field strength, averaged over the second (null in car mode or if unknown). */
+    val magneticFieldRatio: Double? = null,
     /** Set in car mode. Then [magneticHeadingDeg] is the TRUE heading and [declinationDeg] is 0. */
     val car: CarCapture? = null,
 )
@@ -406,6 +409,8 @@ private suspend fun takeBearing(
         val location = currentLocation()
         if (samples.isEmpty() || location == null) return null
         val headings = samples.map { it.rawMagneticHeadingDeg }
+        val fields = samples.mapNotNull { it.rawFieldStrengthUt }
+        val fieldRatio = MagneticCheck.ratio(fields.takeIf { it.isNotEmpty() }?.average(), location.expectedFieldUt())
         return PendingCapture(
             photo = photo,
             timeMillis = System.currentTimeMillis(),
@@ -418,6 +423,7 @@ private suspend fun takeBearing(
             rollDeg = circularMeanDeg(samples.map { it.rawRollDeg }),
             compassAccuracy = samples.last().accuracy,
             focalFraction = optics?.focalFraction(photo.width, photo.height),
+            magneticFieldRatio = fieldRatio,
         )
     } catch (e: CancellationException) {
         throw e
@@ -729,10 +735,17 @@ private fun LiveReadout(orientation: OrientationState, location: Location?, gpsO
             }
         }
         if (orientation is OrientationState.Reading) {
+            val expectedField = remember(location) { location?.expectedFieldUt() }
+            val fieldRatio = MagneticCheck.ratio(orientation.fieldStrengthUt, expectedField)
             when {
                 orientation.accuracy == SensorManager.SENSOR_STATUS_ACCURACY_LOW ||
                     orientation.accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE ->
                     WarningText("Compass needs calibrating. Wave the phone in a figure-8 a few times.")
+                fieldRatio != null && MagneticCheck.isDisturbed(fieldRatio) ->
+                    WarningText(
+                        "Magnetic interference: the field is ${MagneticCheck.describe(fieldRatio)}. " +
+                            "Move away from cars, metal fences and power lines."
+                    )
                 abs(orientation.rollDeg) > 5 ->
                     WarningText("Phone is tilted sideways ${fmt(abs(orientation.rollDeg), 0)}°. Hold it level.")
             }
@@ -753,7 +766,9 @@ private fun ReviewScreen(
     var tapX by remember { mutableFloatStateOf(0.5f) }
     var tapY by remember { mutableFloatStateOf(0.5f) }
     var errorDeg by remember {
-        mutableFloatStateOf((pending.car?.defaultErrorDeg ?: BearingMath.defaultErrorDeg(pending.compassAccuracy)).toFloat())
+        mutableFloatStateOf(
+            (pending.car?.defaultErrorDeg ?: BearingMath.defaultErrorDeg(pending.compassAccuracy, pending.magneticFieldRatio)).toFloat()
+        )
     }
     var saving by remember { mutableStateOf(false) }
 
@@ -880,6 +895,12 @@ private fun reviewWarnings(p: PendingCapture): List<String> = buildList {
     ) {
         add("Compass calibration was low. Calibrate (figure-8) and retake if you can.")
     }
+    p.magneticFieldRatio?.takeIf { MagneticCheck.isDisturbed(it) }?.let { ratio ->
+        add(
+            "Magnetic interference: the field was ${MagneticCheck.describe(ratio)}, so nearby metal may have " +
+                "turned the compass. The error band starts at ±15°. Move away from metal and retake if you can."
+        )
+    }
     if (abs(p.rollDeg) > 5) add("The phone was tilted sideways ${fmt(abs(p.rollDeg), 0)}°. Hold it level next time.")
     val gpsAccuracy = p.location.takeIf { it.hasAccuracy() }?.accuracy
     if (gpsAccuracy != null && gpsAccuracy > 50) add("GPS accuracy was poor (±${gpsAccuracy.roundToInt()} m).")
@@ -933,5 +954,6 @@ private fun buildObservation(
         headingFromCar = p.car != null,
         speedMps = p.car?.speedMps,
         lineUpAgeSeconds = p.car?.lineUpAgeSeconds,
+        magneticFieldRatio = if (p.car == null) p.magneticFieldRatio else null,
     )
 }
