@@ -25,7 +25,7 @@ _Last updated: 2026-11-12_
 (full plan agreed in conversation; summary here):
 1. **Share result** (`share-result`): Share button (text: location, uncertainty, time, OSM link;
    never observer positions) and Open in map app on the map. No database change.
-   Code written; waiting for the owner to build and check.
+   Built and checked on the phone.
 2. **Magnetic interference warning** (`compass-interference`): compare measured field strength
    with `GeomagneticField`; warn when off by more than 15%; save the ratio with each bearing (DB v3).
 3. **Type in a bearing** (`typed-bearing`): add a bearing by hand (position, true/magnetic
