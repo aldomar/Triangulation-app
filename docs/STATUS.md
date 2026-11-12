@@ -42,7 +42,7 @@ _Last updated: 2026-11-12_
 5. **In-app help guide** (`help-guide`, stacked on `landmark-check`; owner's request): a round
    "?" on every screen opens a full-screen help dialog at that screen's topic, with Contents.
    Short phone-sized text in `ui/Help.kt` (owner chose this over showing USAGE.md); opens once
-   by itself on first launch (`Settings.helpShown`). Built and checked on the phone. PR → `landmark-check`.
+   by itself on first launch (`Settings.helpShown`). Built and checked on the phone. PR #13 → `landmark-check`.
 
 **Immediate next step:** outdoor testing of Phases 6 and 4b (checklists below), then tune the
 guesses from the results. Phase 5 is on hold (plan kept in `docs/PHASE5-PLAN.md`).
