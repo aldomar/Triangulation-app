@@ -13,6 +13,11 @@ Photos and positions are kept only inside the app on your phone.
 If you chose "Approximate" location by mistake, tap **Open settings**, then
 **Permissions → Location**, and turn on **Use precise location**.
 
+The first time the app starts, it shows a short **help guide**. You can open it again at any
+time with the round **?** button at the top of every screen. It opens at the help for that
+screen, and **Contents** lists every topic. The guide is built into the app and works without
+signal. This manual has more detail.
+
 ## Taking a bearing
 
 The app opens on the **Take a bearing** screen.

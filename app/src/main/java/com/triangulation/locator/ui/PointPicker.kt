@@ -127,7 +127,9 @@ fun PointPicker(
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f),
                 )
+                HelpButton(HelpTopic.PointPicker)
             }
             HorizontalDivider(Modifier.zIndex(1f))
             Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {

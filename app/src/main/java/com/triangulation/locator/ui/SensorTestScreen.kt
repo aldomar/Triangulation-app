@@ -87,7 +87,7 @@ fun SensorTestScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            ScreenHeader("Sensor check", onBack)
+            ScreenHeader("Sensor check", onBack, HelpTopic.Sensors)
             Text(
                 "Make sure GPS and the compass are working before taking bearings. Best results outdoors, away from cars and metal.",
                 style = MaterialTheme.typography.bodyMedium,

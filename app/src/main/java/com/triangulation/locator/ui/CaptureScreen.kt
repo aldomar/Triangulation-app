@@ -183,6 +183,15 @@ fun CaptureScreen(
     var askCarSafety by remember { mutableStateOf(false) }
     var liningUp by remember { mutableStateOf(false) }
 
+    // Open the help guide once, the first time the app starts.
+    var firstHelp by remember { mutableStateOf(check == null && !settings.helpShown) }
+    if (firstHelp) {
+        HelpDialog(HelpTopic.GettingStarted, onClose = {
+            settings.helpShown = true
+            firstHelp = false
+        })
+    }
+
     val orientationFlow = rememberOrientationFlow()
     val activeOrientationFlow = remember(carOn) { if (carOn) flowOf(OrientationState.Waiting) else orientationFlow }
     val orientation by rememberOrientationState(activeOrientationFlow)
@@ -288,9 +297,11 @@ fun CaptureScreen(
                     )
                     if (check != null) {
                         TextButton(onClick = onCancelCheck) { Text("Cancel") }
+                        HelpButton(HelpTopic.CompassCheck)
                     } else {
                         TextButton(onClick = onOpenSensors) { Text("Sensors") }
                         TextButton(onClick = onOpenHistory) { Text("History") }
+                        HelpButton(HelpTopic.GettingStarted)
                     }
                 }
                 if (check != null) {
@@ -823,7 +834,15 @@ private fun ReviewScreen(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Text("Tap exactly on the object", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    "Tap exactly on the object",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
+                HelpButton(HelpTopic.Review)
+            }
             Text(
                 "For smoke, tap the base of the column where it meets the ground or treeline. That spot also lets " +
                     "the map estimate the distance from a single photo.",

@@ -124,7 +124,7 @@ private fun CheckSetup(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            ScreenHeader("Check the compass", onBack)
+            ScreenHeader("Check the compass", onBack, HelpTopic.CompassCheck)
             Text(
                 "Take a bearing of something whose exact position you know, such as a radio mast, a summit or a " +
                     "lookout tower, ideally more than 1 km away. The app compares your bearing with the true " +
@@ -225,7 +225,7 @@ private fun CheckResult(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            ScreenHeader("Compass check", onDone)
+            ScreenHeader("Compass check", onDone, HelpTopic.CompassCheck)
             Text(
                 "Your compass ${LandmarkCheck.describe(c.differenceDeg)}",
                 style = MaterialTheme.typography.headlineSmall,
