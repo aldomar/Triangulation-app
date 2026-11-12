@@ -34,7 +34,7 @@ guesses from the results. Phase 5 is on hold (plan kept in `docs/PHASE5-PLAN.md`
 - [ ] Tap-offset correction away from the photo centre (still unverified from Phase 2).
 **Map screen layout fix** (branch `map-layout-fix`, off `phase-6-single-photo`): the map is now
 clipped to its own area, and the top bar and bottom panel have solid backgrounds, so the map
-can't cover them while zooming. Waiting for the owner to build and check on the phone.
+can't cover them while zooming. Built and checked on the phone; PR #7 → `phase-6-single-photo`.
 
 **Pending whenever the owner has time:** road-test the driving test, then car-mode bearings.
 Use the results to tune the guesses listed below.
