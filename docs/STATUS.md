@@ -28,6 +28,7 @@ _Last updated: 2026-11-12_
    Built and checked on the phone.
 2. **Magnetic interference warning** (`compass-interference`): compare measured field strength
    with `GeomagneticField`; warn when off by more than 15%; save the ratio with each bearing (DB v3).
+   Built and checked on the phone (stacked on `share-result`).
 3. **Type in a bearing** (`typed-bearing`): add a bearing by hand (position, true/magnetic
    bearing, error, time, note), e.g. from a lookout. No photo. DB v4.
 4. **Landmark check** (`landmark-check`): take a bearing of a known point and record the compass

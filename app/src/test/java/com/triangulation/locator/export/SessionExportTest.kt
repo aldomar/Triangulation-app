@@ -132,6 +132,16 @@ class SessionExportTest {
     }
 
     @Test
+    fun magneticInterferenceIsExported() {
+        val list = listOf(twoBearings[0].copy(magneticFieldRatio = 1.32), twoBearings[1].copy(magneticFieldRatio = 1.02))
+        val json = SessionExport.geoJson("S", list, time)
+        assertTrue(json, json.contains(""""magneticFieldRatio":1.32,"magneticInterference":true"""))
+        assertTrue(json, json.contains(""""magneticFieldRatio":1.02,"magneticInterference":false"""))
+        val gpx = SessionExport.gpx("S", list, time)
+        assertEquals(1, count(gpx, "magnetic interference (field 32% too strong)"))
+    }
+
+    @Test
     fun fileNamesAreSafe() {
         assertEquals("a_b_c.gpx", SessionExport.fileName("a/b:c", ExportFormat.Gpx))
         assertEquals("Triangulation.geojson", SessionExport.fileName("  ", ExportFormat.GeoJson))

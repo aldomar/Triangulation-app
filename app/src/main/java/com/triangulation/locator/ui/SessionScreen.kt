@@ -54,6 +54,7 @@ import com.triangulation.locator.data.BearingMath
 import com.triangulation.locator.data.Observation
 import com.triangulation.locator.data.ObservationStore
 import com.triangulation.locator.data.Session
+import com.triangulation.locator.sensors.MagneticCheck
 import com.triangulation.locator.ui.theme.StatusColors
 import kotlinx.coroutines.launch
 import java.text.DateFormat
@@ -285,6 +286,13 @@ private fun ObservationRow(
                         style = MaterialTheme.typography.bodySmall,
                         color = if (color == StatusColors.Good) MaterialTheme.colorScheme.onSurfaceVariant else color,
                     )
+                    obs.magneticFieldRatio?.takeIf { MagneticCheck.isDisturbed(it) }?.let { ratio ->
+                        Text(
+                            "Magnetic interference (field ${MagneticCheck.describe(ratio)})",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = StatusColors.Poor,
+                        )
+                    }
                 }
             }
             Column(horizontalAlignment = Alignment.End) {

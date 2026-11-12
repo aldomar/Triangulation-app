@@ -18,13 +18,14 @@ import kotlinx.coroutines.flow.Flow
  * bearings are kept. Room records each version's layout in `app/schemas/`.
  *
  * Versions: 1 = Phase 4. 2 = car mode (observations gained headingFromCar, speedMps,
- * lineUpAgeSeconds; added automatically, existing rows get false/null).
+ * lineUpAgeSeconds; added automatically, existing rows get false/null). 3 = magnetic
+ * interference check (observations gained magneticFieldRatio; existing rows get null).
  */
 @Database(
     entities = [Session::class, Observation::class],
-    version = 2,
+    version = 3,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2)],
+    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun dao(): TriangulationDao

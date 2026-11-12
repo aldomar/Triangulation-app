@@ -22,6 +22,9 @@ The app opens on the **Take a bearing** screen.
    - the direction you're facing (for example "247° WSW")
    - **Compass**: should be **High** (green). If not, wave the phone in a figure-8 a few times.
    - **GPS**: how accurate your position is. Green or yellow is good.
+   - If an orange **Magnetic interference** warning appears, something nearby (a car, metal
+     fence, railing, power line, or even a phone case magnet) is bending the compass. Walk
+     away from it until the warning goes.
 3. **Hold the phone upright** like you're taking a normal photo, and keep it level side to side.
 4. **Put the crosshair on the object** and press **Take bearing**.
 5. **Hold still** while it says "Hold still…" (about one second).
@@ -31,7 +34,7 @@ The app opens on the **Take a bearing** screen.
    **Line of sight** row shows how far up or down you were looking. The orange circle shows where you tapped.
 7. Check the **bearing** shown (the exact direction to the object from where you stand).
 8. Check the **error band** (±°). This is how far off the bearing might be. It starts from how
-   well calibrated the compass was. Drag the slider wider if you weren't sure.
+   well calibrated the compass was. If there was magnetic interference it starts at ±15°. Drag the slider wider if you weren't sure.
 9. Read any orange warnings. If one says the phone moved or the compass was poor, consider
    tapping **Retake**. Otherwise tap **Save**.
 
@@ -268,6 +271,12 @@ The big number is the direction the **back camera** points, in degrees:
 
 Phone compasses are often off by 5–15°. At 10 km, being 5° off moves the line by almost 900 m,
 so calibration really matters.
+
+**Magnetic field.** The card also compares the magnetic field the phone measures with the
+strength Earth's field should have where you are (worked out on the phone, no internet). If
+they differ by more than 15%, something nearby is disturbing the compass, and the app shows
+**Magnetic interference**. Calibrating doesn't fix this: move away from the metal instead.
+Bearings taken with interference are marked in the session list and in exports.
 
 ### Tilt
 

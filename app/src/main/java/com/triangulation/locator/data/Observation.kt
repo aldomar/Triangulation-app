@@ -69,6 +69,12 @@ data class Observation(
     val speedMps: Double? = null,
     /** Car mode: seconds between lining up and the photo. */
     val lineUpAgeSeconds: Double? = null,
+    /**
+     * Measured ÷ expected magnetic field strength during the bearing (1.0 = as expected).
+     * Far from 1 means nearby metal may have bent the compass ([com.triangulation.locator.sensors.MagneticCheck]).
+     * Null for car mode and for bearings saved before this was recorded.
+     */
+    val magneticFieldRatio: Double? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", 1)
@@ -96,6 +102,7 @@ data class Observation(
         put("headingFromCar", headingFromCar)
         putOpt("speedMps", speedMps)
         putOpt("lineUpAgeSeconds", lineUpAgeSeconds)
+        putOpt("magneticFieldRatio", magneticFieldRatio)
     }
 
     companion object {
@@ -124,6 +131,7 @@ data class Observation(
             headingFromCar = o.optBoolean("headingFromCar", false),
             speedMps = o.optDoubleOrNull("speedMps"),
             lineUpAgeSeconds = o.optDoubleOrNull("lineUpAgeSeconds"),
+            magneticFieldRatio = o.optDoubleOrNull("magneticFieldRatio"),
         )
 
         private fun JSONObject.optDoubleOrNull(key: String): Double? =

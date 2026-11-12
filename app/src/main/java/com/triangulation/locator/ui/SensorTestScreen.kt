@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.triangulation.locator.sensors.GpsState
+import com.triangulation.locator.sensors.MagneticCheck
 import com.triangulation.locator.sensors.OrientationState
 import com.triangulation.locator.sensors.normalize360
 import com.triangulation.locator.ui.theme.StatusColors
@@ -97,7 +98,7 @@ fun SensorTestScreen(onBack: (() -> Unit)? = null) {
             }
 
             HeadingCard(orientation, declination)
-            CompassAccuracyCard(orientation)
+            CompassAccuracyCard(orientation, location)
             TiltCard(orientation)
             DrivingTestCard(orientation, declination, location)
 
@@ -223,9 +224,11 @@ private fun HeadingCard(orientation: OrientationState, declination: Double?) {
 }
 
 @Composable
-private fun CompassAccuracyCard(orientation: OrientationState) {
+private fun CompassAccuracyCard(orientation: OrientationState, location: Location?) {
     if (orientation !is OrientationState.Reading) return
     val (label, color) = compassAccuracyLabel(orientation.accuracy)
+    val expectedField = remember(location) { location?.expectedFieldUt() }
+    val fieldRatio = MagneticCheck.ratio(orientation.fieldStrengthUt, expectedField)
     InfoCard("Compass calibration") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Status", Modifier.weight(1f))
@@ -234,6 +237,26 @@ private fun CompassAccuracyCard(orientation: OrientationState) {
         if (orientation.accuracy != SensorManager.SENSOR_STATUS_ACCURACY_HIGH) {
             Spacer(Modifier.height(8.dp))
             Text(CALIBRATION_TIP, style = MaterialTheme.typography.bodyMedium)
+        }
+        Spacer(Modifier.height(8.dp))
+        ValueRow("Magnetic field measured", orientation.fieldStrengthUt?.let { "${fmt(it, 1)} µT" } ?: "waiting…")
+        ValueRow("Expected here", expectedField?.let { "${fmt(it, 1)} µT" } ?: "needs GPS fix")
+        if (fieldRatio != null) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Interference", Modifier.weight(1f))
+                if (MagneticCheck.isDisturbed(fieldRatio)) {
+                    StatusBadge("Field ${MagneticCheck.describe(fieldRatio)}", StatusColors.Bad)
+                } else {
+                    StatusBadge("None detected", StatusColors.Good)
+                }
+            }
+            if (MagneticCheck.isDisturbed(fieldRatio)) {
+                Text(
+                    "Nearby metal or electric current is changing the magnetic field, so the compass may point " +
+                        "the wrong way. Move away from cars, metal fences, buildings and power lines.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
     }
 }
