@@ -50,6 +50,9 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.material3.TextButton
+import com.triangulation.locator.data.ObservationStore
+import com.triangulation.locator.solver.LandmarkCheck
 import com.triangulation.locator.sensors.GpsState
 import com.triangulation.locator.sensors.MagneticCheck
 import com.triangulation.locator.sensors.OrientationState
@@ -61,7 +64,11 @@ import kotlin.math.abs
 
 /** Live readout of GPS, true heading, tilt and compass calibration. */
 @Composable
-fun SensorTestScreen(onBack: (() -> Unit)? = null) {
+fun SensorTestScreen(
+    store: ObservationStore,
+    onStartCompassCheck: () -> Unit,
+    onBack: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
     val permissions = rememberGrantedPermissions(*LOCATION_PERMISSIONS)
     val hasFineLocation = permissions[Manifest.permission.ACCESS_FINE_LOCATION]
@@ -99,6 +106,7 @@ fun SensorTestScreen(onBack: (() -> Unit)? = null) {
 
             HeadingCard(orientation, declination)
             CompassAccuracyCard(orientation, location)
+            CompassChecksCard(store, onStartCompassCheck)
             TiltCard(orientation)
             DrivingTestCard(orientation, declination, location)
 
@@ -256,6 +264,59 @@ private fun CompassAccuracyCard(orientation: OrientationState, location: Locatio
                         "the wrong way. Move away from cars, metal fences, buildings and power lines.",
                     style = MaterialTheme.typography.bodyMedium,
                 )
+            }
+        }
+    }
+}
+
+/** Checks against landmarks: start a new one, and see how far off the compass has been. */
+@Composable
+private fun CompassChecksCard(store: ObservationStore, onStart: () -> Unit) {
+    val scope = rememberCoroutineScope()
+    val checksFlow = remember { store.compassChecks() }
+    val checks by checksFlow.collectAsStateWithLifecycle(emptyList())
+    var showAll by remember { mutableStateOf(false) }
+
+    InfoCard("Check against a landmark") {
+        Text(
+            "Take a bearing of a landmark whose position you know, to see how far off this phone's compass is. " +
+                "Results are only recorded; your bearings aren't changed.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = onStart) { Text("Check the compass") }
+        LandmarkCheck.summary(checks.map { it.differenceDeg })?.let { s ->
+            Spacer(Modifier.height(8.dp))
+            Text(
+                if (s.count == 1) "1 check: compass ${LandmarkCheck.describe(s.meanDeg)}."
+                else "${s.count} checks: on average the compass ${LandmarkCheck.describe(s.meanDeg)}, " +
+                    "varying by about ±${fmt(s.spreadDeg, 1)}°.",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
+        val shown = if (showAll) checks else checks.take(5)
+        shown.forEach { check ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        "${signed(check.differenceDeg)}°  ${check.landmarkName ?: "Landmark"}, ${distanceText(check.distanceM)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        DateFormat.getDateTimeInstance(DateFormat.SHORT, DateFormat.SHORT).format(Date(check.timeMillis)) +
+                            (if (check.distanceM < LandmarkCheck.MIN_GOOD_DISTANCE_M) "  ·  close landmark" else "") +
+                            (if (MagneticCheck.isDisturbed(check.magneticFieldRatio)) "  ·  interference" else ""),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                TextButton(onClick = { scope.launch { store.deleteCompassCheck(check.id) } }) { Text("Delete") }
+            }
+        }
+        if (checks.size > 5) {
+            TextButton(onClick = { showAll = !showAll }) {
+                Text(if (showAll) "Show fewer" else "Show all ${checks.size}")
             }
         }
     }

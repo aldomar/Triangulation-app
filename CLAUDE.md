@@ -48,8 +48,8 @@ Work one phase at a time; each must build and run on a real phone. Status:
   - `map/`: osmdroid setup (`MapSetup.kt`) and the custom dot overlay
   - `terrain/`: single-photo mode. `TerrainMath.kt` (line of sight to the ground) and `Terrarium.kt`
     (elevation tile maths) are pure Kotlin; `TerrainTiles.kt` downloads/caches tiles and runs estimates
-- Tests: `app/src/test/.../solver/SolverTest.kt`, `export/SessionExportTest.kt`, `export/ShareTextTest.kt`, `solver/CoordinateParserTest.kt`, `sensors/MagneticCheckTest.kt`, `car/CarMathTest.kt`, `terrain/TerrainMathTest.kt` (JUnit 4).
-  - `ui/`: Compose screens (`CaptureScreen`, `SessionsScreen` = History, `SessionScreen`, `MapScreen`, `SensorTestScreen` incl. driving test, `TypedBearingScreen`, `PointPicker` tap-to-choose map), `ExportUi.kt`, `CarModeUi.kt`, shared bits in `Common.kt`; `ui/theme/` colours
+- Tests: `app/src/test/.../solver/SolverTest.kt`, `export/SessionExportTest.kt`, `export/ShareTextTest.kt`, `solver/CoordinateParserTest.kt`, `solver/LandmarkCheckTest.kt`, `sensors/MagneticCheckTest.kt`, `car/CarMathTest.kt`, `terrain/TerrainMathTest.kt` (JUnit 4).
+  - `ui/`: Compose screens (`CaptureScreen`, `SessionsScreen` = History, `SessionScreen`, `MapScreen`, `SensorTestScreen` incl. driving test, `TypedBearingScreen`, `LandmarkCheckScreen`, `PointPicker` tap-to-choose map), `ExportUi.kt`, `CarModeUi.kt`, shared bits in `Common.kt`; `ui/theme/` colours
 - Versions are in `gradle/libs.versions.toml` (AGP 9 with built-in Kotlin, Gradle 9).
   Android Studio 2026.2 runs Gradle on Java 25, so Gradle must stay at 9.1 or newer.
 
@@ -62,6 +62,8 @@ Work one phase at a time; each must build and run on a real phone. Status:
 - Storage is Room (sessions + observations). Schema changes need a proper `Migration`; never use destructive fallback. Room/KSP via KSP plugin (AGP 9 built-in Kotlin, no kapt).
 - Magnetic interference: `MagneticCheck` compares the magnetometer field strength with `GeomagneticField.fieldStrength`;
   more than 15% off = disturbed (warn, default error band ±15°, saved as `Observation.magneticFieldRatio`, DB v3).
+- Compass checks (`CompassCheck` table, DB v5; `ui/LandmarkCheckScreen.kt`, maths in `solver/LandmarkCheck.kt`):
+  measure and record only, never change bearings (owner's choice). `CaptureScreen` runs in check mode via `check: CheckTarget`.
 - Typed-in bearings (`Observation.typedIn`, DB v4): no photo (`photoFileName` blank; always check `hasPhoto` before touching files),
   no tilt (`TerrainResult.NoTilt`), `compassAccuracy` -1. Positions parsed by pure `solver/CoordinateParser.kt`.
 - Car mode: never use the compass inside a car; heading = gyroscope (game rotation vector) + line-up offset from GPS course. Passenger-only warnings must stay.

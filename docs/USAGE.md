@@ -297,6 +297,26 @@ they differ by more than 15%, something nearby is disturbing the compass, and th
 **Magnetic interference**. Calibrating doesn't fix this: move away from the metal instead.
 Bearings taken with interference are marked in the session list and in exports.
 
+### Check against a landmark
+
+This shows how far off your phone's compass really is. You need a landmark whose exact
+position you know: a radio mast, a summit, a lookout tower. Ideally it's more than 1 km away.
+
+1. On the Sensors screen, tap **Check the compass**.
+2. Give the landmark a name if you like. Then type its position, or tap **Pick on map** and tap
+   it (zoom right in). The position must be accurate: 50 m off at 2 km moves the answer by
+   about 1.4°.
+3. Tap **Aim at it**. Take a bearing exactly as usual, and tap the landmark on the photo.
+4. Tap **Compare**. The app shows, for example, "Your compass reads 3.2° clockwise of true",
+   with the true bearing, the distance, and how much GPS error alone could explain.
+
+Each check is kept in a list on the Sensors screen, with the average over all checks.
+Checks are only recorded: they never change your bearings, and the photo isn't kept.
+Delete a check if you know it was wrong (for example, the wrong landmark).
+
+**Tip:** tap the landmark away from the centre of the photo now and then. That also checks
+the app's correction for where you tap.
+
 ### Tilt
 
 - **Pitch**: how far the camera points above (+) or below (−) the horizon.

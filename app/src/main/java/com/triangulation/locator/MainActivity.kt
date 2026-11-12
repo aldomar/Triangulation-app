@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import com.triangulation.locator.data.ObservationStore
 import com.triangulation.locator.ui.CaptureScreen
+import com.triangulation.locator.ui.LandmarkCheckScreen
 import com.triangulation.locator.ui.MapScreen
 import com.triangulation.locator.ui.SensorTestScreen
 import com.triangulation.locator.ui.SessionScreen
@@ -21,7 +22,7 @@ import com.triangulation.locator.ui.SessionsScreen
 import com.triangulation.locator.ui.TypedBearingScreen
 import com.triangulation.locator.ui.theme.TriangulationTheme
 
-private enum class Screen { Capture, Sensors, History, Session, Map, TypedBearing }
+private enum class Screen { Capture, Sensors, History, Session, Map, TypedBearing, CompassCheck }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -49,6 +50,7 @@ class MainActivity : ComponentActivity() {
                     Screen.Capture -> Unit
                     Screen.Map, Screen.TypedBearing -> BackHandler { screen = Screen.Session }
                     Screen.Session -> BackHandler { screen = sessionOpenedFrom }
+                    Screen.CompassCheck -> BackHandler { screen = Screen.Sensors }
                     else -> BackHandler(onBack = backToCapture)
                 }
 
@@ -59,7 +61,12 @@ class MainActivity : ComponentActivity() {
                         onOpenHistory = { screen = Screen.History },
                         onOpenSession = { openSession(it, Screen.Capture) },
                     )
-                    Screen.Sensors -> SensorTestScreen(onBack = backToCapture)
+                    Screen.Sensors -> SensorTestScreen(
+                        store = store,
+                        onStartCompassCheck = { screen = Screen.CompassCheck },
+                        onBack = backToCapture,
+                    )
+                    Screen.CompassCheck -> LandmarkCheckScreen(store = store, onDone = { screen = Screen.Sensors })
                     Screen.History -> SessionsScreen(
                         store = store,
                         onOpenSession = { openSession(it, Screen.History) },

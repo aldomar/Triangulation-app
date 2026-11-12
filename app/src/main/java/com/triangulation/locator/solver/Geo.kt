@@ -1,8 +1,10 @@
 package com.triangulation.locator.solver
 
+import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 data class LatLon(val lat: Double, val lon: Double)
 
@@ -44,4 +46,25 @@ class LocalProjection(val origin: LatLon) {
             LatLon(points.map { it.lat }.average(), points.map { it.lon }.average())
         )
     }
+}
+
+/** Great-circle distance between two points, metres (haversine). */
+fun distanceM(from: LatLon, to: LatLon): Double {
+    val p1 = Math.toRadians(from.lat)
+    val p2 = Math.toRadians(to.lat)
+    val dp = p2 - p1
+    val dl = Math.toRadians(to.lon - from.lon)
+    val a = sin(dp / 2) * sin(dp / 2) + cos(p1) * cos(p2) * sin(dl / 2) * sin(dl / 2)
+    return 2 * LocalProjection.EARTH_RADIUS_M * atan2(sqrt(a), sqrt(1 - a))
+}
+
+/** True bearing from [from] towards [to] at the start of the great-circle path, 0..360. */
+fun initialBearingDeg(from: LatLon, to: LatLon): Double {
+    val p1 = Math.toRadians(from.lat)
+    val p2 = Math.toRadians(to.lat)
+    val dl = Math.toRadians(to.lon - from.lon)
+    val y = sin(dl) * cos(p2)
+    val x = cos(p1) * sin(p2) - sin(p1) * cos(p2) * cos(dl)
+    val deg = Math.toDegrees(atan2(y, x))
+    return (deg % 360 + 360) % 360
 }
