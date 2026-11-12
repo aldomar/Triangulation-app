@@ -63,18 +63,7 @@ fun SensorManager.orientationUpdates(): Flow<OrientationState> {
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
                 if (event.sensor.type != Sensor.TYPE_ROTATION_VECTOR) return
-                // Some older devices crash if given more than 4 values here.
-                SensorManager.getRotationMatrixFromVector(rotation, event.values.copyOf(4))
-
-                // rotation maps phone axes to world axes (x = east, y = north, z = up).
-                // The back camera looks along the phone's -Z axis, which is column 2 negated.
-                val east = -rotation[2]
-                val north = -rotation[5]
-                val up = -rotation[8]
-                val heading = Math.toDegrees(atan2(east.toDouble(), north.toDouble()))
-                val pitch = Math.toDegrees(asin(up.coerceIn(-1f, 1f).toDouble()))
-                // Height of the phone's right edge (x axis) vs top edge (y axis).
-                val roll = Math.toDegrees(atan2(-rotation[6].toDouble(), rotation[7].toDouble()))
+                val (heading, pitch, roll) = cameraAngles(event.values, rotation)
 
                 val headingError = event.values.getOrNull(4)
                     ?.takeIf { it >= 0f }
@@ -113,13 +102,34 @@ fun SensorManager.orientationUpdates(): Flow<OrientationState> {
     }.conflate()
 }
 
-fun normalize360(deg: Double): Double = ((deg % 360.0) + 360.0) % 360.0
+/**
+ * Camera heading, pitch and roll (degrees) from a rotation-vector sensor event.
+ * Heading is relative to whatever the sensor calls "north": magnetic north for
+ * TYPE_ROTATION_VECTOR, an arbitrary direction for TYPE_GAME_ROTATION_VECTOR.
+ *
+ * @param rotation scratch 3x3 matrix, reused to avoid allocating per event.
+ */
+internal fun cameraAngles(values: FloatArray, rotation: FloatArray): Triple<Double, Double, Double> {
+    // Some older devices crash if given more than 4 values here.
+    SensorManager.getRotationMatrixFromVector(rotation, values.copyOf(4))
+
+    // rotation maps phone axes to world axes (x = east, y = north, z = up).
+    // The back camera looks along the phone's -Z axis, which is column 2 negated.
+    val east = -rotation[2]
+    val north = -rotation[5]
+    val up = -rotation[8]
+    val heading = Math.toDegrees(atan2(east.toDouble(), north.toDouble()))
+    val pitch = Math.toDegrees(asin(up.coerceIn(-1f, 1f).toDouble()))
+    // Height of the phone's right edge (x axis) vs top edge (y axis).
+    val roll = Math.toDegrees(atan2(-rotation[6].toDouble(), rotation[7].toDouble()))
+    return Triple(heading, pitch, roll)
+}
 
 /**
  * Light smoothing so the numbers don't flicker. Angles are averaged as unit vectors,
  * so 359° and 1° average to 0°, not 180°.
  */
-private class AngleSmoother(private val alpha: Double = 0.2) {
+internal class AngleSmoother(private val alpha: Double = 0.2) {
     private var sums: DoubleArray? = null // sin, cos pairs
 
     fun update(vararg anglesDeg: Double): DoubleArray {

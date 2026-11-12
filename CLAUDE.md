@@ -31,21 +31,23 @@ Work one phase at a time; each must build and run on a real phone. Status:
 - [x] Phase 2: Capture flow
 - [x] Phase 3: Solve and map (includes the 3+ bearing least-squares fit, pulled forward from Phase 4)
 - [x] Phase 4: History (Room sessions) and GPX/GeoJSON export
+- [ ] Phase 4b: Car mode + driving test (built before Phase 5 at the owner's request)
 - [ ] Phase 5: Tailnet sharing
 - [ ] Phase 6: Single-photo mode
 
 ## Layout
 - `app/src/main/java/com/triangulation/locator/`
   - `MainActivity.kt`: entry point and screen switching (simple enum, no navigation library)
-  - `sensors/`: GPS (`GpsTracker.kt`) and compass/tilt (`OrientationTracker.kt`) as Kotlin Flows; `AngleMath.kt`
+  - `sensors/`: GPS (`GpsTracker.kt`), compass/tilt (`OrientationTracker.kt`) and gyroscope-only heading for car mode (`GyroTracker.kt`) as Kotlin Flows; `AngleMath.kt` (pure)
+  - `car/`: `CarMath.kt` car-mode line-up, error band, position extrapolation, driving-test stats; pure Kotlin (unit-tested)
   - `camera/`: CameraX photo capture and lens optics (focal length for tap offsets)
   - `data/`: `Observation` + `Session` Room entities, `Database.kt` (AppDatabase + DAO), `ObservationStore` (DB + JPEGs in app-private `filesDir/observations`), `BearingMath`, `Settings`
   - `export/`: `SessionExport.kt` GeoJSON/GPX writers, pure Kotlin (unit-tested)
   - `solver/`: pure Kotlin (no Android imports) so it unit-tests on the JVM. `Geo.kt` local east/north
     projection; `Solver.kt` 2-line intersection + quadrilateral uncertainty, 3+ weighted least squares + covariance ellipse
   - `map/`: osmdroid setup (`MapSetup.kt`) and the custom dot overlay
-- Tests: `app/src/test/.../solver/SolverTest.kt`, `export/SessionExportTest.kt` (JUnit 4).
-  - `ui/`: Compose screens (`CaptureScreen`, `SessionsScreen` = History, `SessionScreen`, `MapScreen`, `SensorTestScreen`), `ExportUi.kt`, shared bits in `Common.kt`; `ui/theme/` colours
+- Tests: `app/src/test/.../solver/SolverTest.kt`, `export/SessionExportTest.kt`, `car/CarMathTest.kt` (JUnit 4).
+  - `ui/`: Compose screens (`CaptureScreen`, `SessionsScreen` = History, `SessionScreen`, `MapScreen`, `SensorTestScreen` incl. driving test), `ExportUi.kt`, `CarModeUi.kt`, shared bits in `Common.kt`; `ui/theme/` colours
 - Versions are in `gradle/libs.versions.toml` (AGP 9 with built-in Kotlin, Gradle 9).
   Android Studio 2026.2 runs Gradle on Java 25, so Gradle must stay at 9.1 or newer.
 
@@ -56,6 +58,7 @@ Work one phase at a time; each must build and run on a real phone. Status:
   Tap offset uses focal length from Camera2 characteristics, pitch-corrected (`BearingMath.tapOffsetDeg`).
 - Photos stay in app-private storage, never the Gallery. Saved at most 1920 px on the long side.
 - Storage is Room (sessions + observations). Schema changes need a proper `Migration`; never use destructive fallback. Room/KSP via KSP plugin (AGP 9 built-in Kotlin, no kapt).
+- Car mode: never use the compass inside a car; heading = gyroscope (game rotation vector) + line-up offset from GPS course. Passenger-only warnings must stay.
 - Export uses SAF `CreateDocument` only (user picks the location); the app itself never uploads exports.
 - The user builds and runs the app in Android Studio; don't run Gradle builds without asking.
 - GPS uses `GPS_PROVIDER` only. The network provider can send Wi-Fi/cell data to outside services.

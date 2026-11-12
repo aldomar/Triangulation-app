@@ -95,6 +95,19 @@ class SessionExportTest {
     }
 
     @Test
+    fun carModeBearingsAreLabelled() {
+        val car = twoBearings.map { it.copy(headingFromCar = true, compassAccuracy = -1, speedMps = 20.0, lineUpAgeSeconds = 45.0) }
+        val json = SessionExport.geoJson("x", car, time)
+        assertEquals(2, count(json, "\"headingSource\":\"car (GPS + gyroscope)\""))
+        assertEquals(2, count(json, "\"compassAccuracy\":null"))
+        assertTrue(json.contains("\"speedKmh\":72"))
+        val gpx = SessionExport.gpx("x", car, time)
+        assertTrue(gpx.contains("car mode at 72 km/h, lined up 45 s before"))
+        // Compass bearings say so too.
+        assertEquals(2, count(SessionExport.geoJson("x", twoBearings, time), "\"headingSource\":\"compass\""))
+    }
+
+    @Test
     fun fileNamesAreSafe() {
         assertEquals("a_b_c.gpx", SessionExport.fileName("a/b:c", ExportFormat.Gpx))
         assertEquals("Triangulation.geojson", SessionExport.fileName("  ", ExportFormat.GeoJson))

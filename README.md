@@ -9,11 +9,15 @@ Where those lines of sight cross is roughly where the object is.
 > This app gives an estimate to guide where to look. It is not a location to dispatch
 > emergency services to. **For a real fire, call 911 or your local fire agency.**
 
-## What works now (Phase 4)
+## What works now (Phase 4 + car mode)
 
 - **Take a bearing:** point the camera's crosshair at the object and press the button. The
   app averages the compass over one second, takes a photo, and records your GPS position.
   You then tap exactly on the object in the photo, and the app works out the precise direction.
+- **Car mode (passengers only):** take bearings from a moving car. The compass is unreliable
+  inside a car, so this uses the gyroscope, lined up with the GPS direction of travel. A
+  **driving test** on the Sensors screen measures how well it works on your phone and car.
+  *Not yet tested on the road.*
 - **Sessions:** bearings of the same object are kept together in a session (for example
   "Smoke north of town"). New bearings go into the active session; start a new one for each
   new object.

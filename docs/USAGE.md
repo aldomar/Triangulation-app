@@ -38,6 +38,40 @@ The further apart the places, the better. Ideally the two sightlines should cros
 angle (more than 30°). If two people take bearings at the same time from different places,
 moving smoke won't spoil the result.
 
+## Car mode (from a moving car, passengers only)
+
+> **Never use the app while driving.** Car mode is for a passenger.
+
+Inside a car the compass is thrown off by the metal and wiring around it, often by 10–30°.
+Car mode doesn't use the compass. Instead it uses the phone's **gyroscope**, which measures
+how far the phone turns and isn't affected by metal. It is "lined up" with the direction the car
+is travelling, which GPS measures accurately once the car is moving.
+
+1. Turn on the **Car mode** switch on the main screen. The first time, the app shows a short
+   safety notice. Car mode is always off when the app starts. (Phones without a gyroscope can't
+   use it; the switch is greyed out.)
+2. **Line up.** On a **straight** stretch of road, above 15 km/h, put the crosshair on a distant
+   point **straight ahead down the road** and tap **Line up**. Hold still for a second. If the
+   car is turning, too slow, or GPS isn't ready, the app tells you what to wait for.
+3. **Take bearings** as usual: crosshair on the object, **Take bearing**, keep it on the object
+   for a second, tap the object in the photo, **Save**. You can turn the phone towards the object
+   freely after lining up, and the car can turn too.
+4. **Line up again every few minutes.** The gyroscope slowly drifts. The text next to the switch
+   shows how long ago you lined up and turns orange after 3 minutes. The error band starts at
+   about ±2° and grows by about 1° per minute since lining up.
+
+Good to know:
+
+- **Choose the line-up point carefully.** It is the main source of error. Pick something far
+  away where the road runs dead straight. Don't line up during a lane change or on a bend.
+- If you leave the main screen, or the phone sleeps, you'll need to line up again.
+- The position is the car's position at the moment of the photo (at 100 km/h the car moves
+  28 m every second, and the app allows for this).
+- Bearings taken along one straight road all look at the object from a similar direction, so
+  their lines cross at a shallow angle. Take more after the road bends or from a crossing road.
+- Car-mode bearings are labelled "Car mode" in the session list and in exports.
+- An open side window gives the clearest view. Glass doesn't noticeably bend the sightline.
+
 ## Sessions
 
 A **session** holds all the bearings of **one object**, for example one smoke column. The
@@ -189,9 +223,33 @@ so calibration really matters.
 - **Roll**: how far the phone leans sideways.
 - The circle is a level. Turn the phone until the line is green and flat.
 
+### Driving test (passengers only)
+
+This checks how well your phone can take bearings in your car. It compares the compass and the
+lined-up gyroscope with the direction the car is travelling.
+
+1. A passenger opens **Sensors** and taps **Start driving test** at the bottom.
+2. Hold the phone upright and steady, **facing straight ahead along the car** for the whole
+   test. A dashboard mount is best.
+3. On a straight road above 20 km/h, tap **Line up**.
+4. Drive normally for 10–15 minutes, with some turns. Only straight stretches above 20 km/h
+   are counted, because GPS direction lags in turns.
+5. Note the **gyroscope error** after about 2, 5 and 10 minutes, and the **compass error**
+   (average, spread and worst).
+
+What the numbers mean:
+
+- **Average**: a steady offset, for example if the phone isn't quite facing forward.
+- **Spread**: how much the error wanders. This is what matters most.
+- **Worst**: the largest error seen.
+
+If the gyroscope error stays within about 2° for 3 minutes or more, car mode will work well on
+this phone. Tap **Reset** to clear the numbers and **Stop** to turn the gyroscope off.
+Leaving the Sensors screen stops the test.
+
 ## Battery and storage
 
 The camera, GPS, sensors and map run only while the app is on screen. They stop as soon as you
-switch away. Each saved photo is small (a few hundred KB). Deleting a session or bearing
+switch away. In car mode the gyroscope runs instead of the compass, not alongside it. Each saved photo is small (a few hundred KB). Deleting a session or bearing
 frees its photo's space straight away. Map images are kept to about 50 MB,
 and Android can clear them if the phone runs low on space.

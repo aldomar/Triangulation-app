@@ -7,6 +7,11 @@ import kotlin.math.ln
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+fun normalize360(deg: Double): Double = ((deg % 360.0) + 360.0) % 360.0
+
+/** An angle difference folded into -180..180. */
+fun wrap180(deg: Double): Double = normalize360(deg + 180.0) - 180.0
+
 /**
  * Average of angles in degrees, done on the unit circle so that 359° and 1° average to 0°.
  */

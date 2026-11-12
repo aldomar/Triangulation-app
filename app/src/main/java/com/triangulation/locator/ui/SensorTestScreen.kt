@@ -2,6 +2,23 @@ package com.triangulation.locator.ui
 
 import android.Manifest
 import android.hardware.SensorManager
+import android.location.Location
+import android.os.SystemClock
+import android.widget.Toast
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.triangulation.locator.car.CarMath
+import com.triangulation.locator.car.ErrorStats
+import com.triangulation.locator.car.LineUp
+import com.triangulation.locator.sensors.GyroState
+import com.triangulation.locator.sensors.hasGyroHeading
+import com.triangulation.locator.sensors.wrap180
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -82,6 +99,7 @@ fun SensorTestScreen(onBack: (() -> Unit)? = null) {
             HeadingCard(orientation, declination)
             CompassAccuracyCard(orientation)
             TiltCard(orientation)
+            DrivingTestCard(orientation, declination, location)
 
             Text(
                 "Your position and bearings never leave this phone.",
@@ -271,4 +289,145 @@ private fun LevelIndicator(pitchDeg: Double, rollDeg: Double) {
             }
         }
     }
+}
+
+// ---------- Driving test ----------
+
+/**
+ * Measures, in a moving car, how far the compass and the lined-up gyroscope are from the GPS
+ * direction of travel. The phone must face straight ahead along the car the whole time.
+ * The gyroscope runs only after "Start driving test".
+ */
+@Composable
+private fun DrivingTestCard(orientation: OrientationState, declination: Double?, location: Location?) {
+    val context = LocalContext.current
+    val hasGyro = remember { context.getSystemService(SensorManager::class.java).hasGyroHeading() }
+    var running by remember { mutableStateOf(false) }
+
+    InfoCard("Driving test (passenger only)") {
+        if (!hasGyro) {
+            Text("This phone has no gyroscope, so car mode isn't available on it.")
+        } else if (!running) {
+            Text(
+                "Checks how well bearings can be taken from a moving car. A passenger holds the phone " +
+                    "upright and steady, facing straight ahead along the car (a dashboard mount is best). " +
+                    "On a straight road tap Line up, then drive normally for 10–15 minutes."
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = { running = true }) { Text("Start driving test") }
+        } else {
+            DrivingTestBody(orientation, declination, location, onStop = { running = false })
+        }
+    }
+}
+
+@Composable
+private fun DrivingTestBody(
+    orientation: OrientationState,
+    declination: Double?,
+    location: Location?,
+    onStop: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val gyroFlow = rememberSharedGyroFlow()
+    val gyro by gyroFlow.collectAsStateWithLifecycle(GyroState.Waiting)
+    val fixes = rememberCourseFixes(location)
+    val now = rememberNowTicker()
+
+    var lineUp by remember { mutableStateOf<LineUp?>(null) }
+    var lining by remember { mutableStateOf(false) }
+    var compassStats by remember { mutableStateOf(ErrorStats()) }
+    var gyroStats by remember { mutableStateOf(ErrorStats()) }
+
+    val reading = gyro as? GyroState.Reading
+    val validLineUp = lineUp?.takeIf { reading != null && it.runId == reading.runId }
+    val compassTrue = (orientation as? OrientationState.Reading)?.let { o ->
+        declination?.let { normalize360(o.magneticHeadingDeg + it) }
+    }
+    val gyroTrue = if (reading != null && validLineUp != null) CarMath.trueHeading(reading.relativeHeadingDeg, validLineUp) else null
+    val lastFix = fixes.lastOrNull()
+    val problem = CarMath.courseProblem(fixes.toList(), now, CarMath.MIN_TEST_SPEED_MPS)
+
+    // One sample per new GPS fix, only while driving straight above 20 km/h.
+    LaunchedEffect(lastFix) {
+        val fix = lastFix ?: return@LaunchedEffect
+        if (CarMath.courseProblem(fixes.toList(), SystemClock.elapsedRealtimeNanos(), CarMath.MIN_TEST_SPEED_MPS) != null) {
+            return@LaunchedEffect
+        }
+        compassTrue?.let { compassStats += it - fix.courseDeg }
+        gyroTrue?.let { gyroStats += it - fix.courseDeg }
+    }
+
+    ValueRow("Speed", lastFix?.let { "${(it.speedMps * 3.6).roundToInt()} km/h" } ?: "—")
+    ValueRow(
+        "GPS direction of travel",
+        lastFix?.let { f -> "${fmt(f.courseDeg, 1)}°" + (f.courseAccuracyDeg?.let { " ±${fmt(it, 1)}°" } ?: "") } ?: "—",
+    )
+    if (problem != null) {
+        Text(
+            courseProblemText(problem, CarMath.MIN_TEST_SPEED_MPS) + " (Not counting.)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    ValueRow(
+        "Compass heading",
+        when {
+            compassTrue == null -> "waiting…"
+            lastFix != null && problem == null -> "${fmt(compassTrue, 1)}°  (off by ${signed(wrap180(compassTrue - lastFix.courseDeg))}°)"
+            else -> "${fmt(compassTrue, 1)}°"
+        },
+    )
+    ValueRow(
+        "Gyroscope heading",
+        when {
+            reading == null -> "starting…"
+            gyroTrue == null -> if (lineUp != null) "line up again" else "tap Line up"
+            lastFix != null && problem == null -> "${fmt(gyroTrue, 1)}°  (off by ${signed(wrap180(gyroTrue - lastFix.courseDeg))}°)"
+            else -> "${fmt(gyroTrue, 1)}°"
+        },
+    )
+    validLineUp?.let { ValueRow("Lined up", "${minutesSeconds(it.ageSeconds(now))} ago") }
+
+    Spacer(Modifier.height(4.dp))
+    Text("Compass error", fontWeight = FontWeight.SemiBold)
+    Text(statsText(compassStats), style = MaterialTheme.typography.bodyMedium)
+    Text("Gyroscope error (since last line-up)", fontWeight = FontWeight.SemiBold)
+    Text(statsText(gyroStats), style = MaterialTheme.typography.bodyMedium)
+
+    Spacer(Modifier.height(8.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(
+            enabled = reading != null && !lining,
+            onClick = {
+                lining = true
+                scope.launch {
+                    when (val r = performLineUp(gyroFlow) { fixes.toList() }) {
+                        is LineUpResult.Done -> {
+                            lineUp = r.lineUp
+                            gyroStats = ErrorStats()
+                            Toast.makeText(context, "Lined up", Toast.LENGTH_SHORT).show()
+                        }
+                        is LineUpResult.Failed -> Toast.makeText(context, r.message, Toast.LENGTH_LONG).show()
+                    }
+                    lining = false
+                }
+            },
+        ) { Text(if (lining) "Hold still…" else "Line up") }
+        OutlinedButton(onClick = { compassStats = ErrorStats(); gyroStats = ErrorStats() }) { Text("Reset") }
+        OutlinedButton(onClick = onStop) { Text("Stop") }
+    }
+    Text(
+        "Note the gyroscope error after about 2, 5 and 10 minutes. Leaving this screen stops the test " +
+            "and you'll need to line up again.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+}
+
+private fun statsText(s: ErrorStats): String {
+    val mean = s.meanDeg ?: return "No samples yet. Counts only above 20 km/h on straight roads."
+    return "Average ${signed(mean)}°, spread ±${fmt(s.spreadDeg ?: 0.0, 1)}°, worst ${fmt(s.worstDeg, 0)}°, " +
+        "now ${s.lastDeg?.let { signed(it) } ?: "—"}° (${s.count} samples)"
 }
