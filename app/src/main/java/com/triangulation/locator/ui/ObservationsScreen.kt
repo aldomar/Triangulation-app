@@ -19,8 +19,11 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.height
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -49,18 +52,34 @@ import java.text.DateFormat
 import java.util.Date
 import kotlin.math.roundToInt
 
-/** List of saved bearings. Phase 3 will draw these on a map. */
+/**
+ * List of saved bearings. Tick the ones to use, then "Show on map".
+ *
+ * @param selectedIds ticked bearings, kept by the caller so they survive a trip to the map;
+ *   null means "not chosen yet", which ticks the two newest.
+ */
 @Composable
-fun ObservationsScreen(store: ObservationStore, onBack: () -> Unit) {
+fun ObservationsScreen(
+    store: ObservationStore,
+    selectedIds: Set<String>?,
+    onSelectionChange: (Set<String>) -> Unit,
+    onShowMap: () -> Unit,
+    onBack: () -> Unit,
+) {
     val scope = rememberCoroutineScope()
     var observations by remember { mutableStateOf<List<Observation>?>(null) }
     var confirmDeleteAll by remember { mutableStateOf(false) }
     var toDelete by remember { mutableStateOf<Observation?>(null) }
 
     suspend fun reload() {
-        observations = store.list()
+        val list = store.list()
+        observations = list
+        val ids = list.map { it.id }.toSet()
+        // Default to the two newest; drop ticks for deleted bearings.
+        onSelectionChange(selectedIds?.intersect(ids) ?: list.take(2).map { it.id }.toSet())
     }
     LaunchedEffect(Unit) { reload() }
+    val selected = selectedIds.orEmpty()
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
@@ -78,20 +97,42 @@ fun ObservationsScreen(store: ObservationStore, onBack: () -> Unit) {
                         "from different places, to locate an object.",
                     Modifier.padding(16.dp),
                 )
-                else -> LazyColumn(
-                    contentPadding = PaddingValues(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    item {
-                        Text(
-                            "${list.size} saved. Best results: two or more bearings from places far apart, " +
-                                "with sightlines crossing at a wide angle.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        item {
+                            Text(
+                                "${list.size} saved. Tick the bearings of the same object, then show them on the map. " +
+                                    "Best results: places far apart, with sightlines crossing at a wide angle.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        items(list, key = { it.id }) { obs ->
+                            ObservationRow(
+                                store = store,
+                                obs = obs,
+                                checked = obs.id in selected,
+                                onCheckedChange = { on -> onSelectionChange(if (on) selected + obs.id else selected - obs.id) },
+                                onDelete = { toDelete = obs },
+                            )
+                        }
                     }
-                    items(list, key = { it.id }) { obs ->
-                        ObservationRow(store, obs, onDelete = { toDelete = obs })
+                    Button(
+                        onClick = onShowMap,
+                        enabled = selected.size >= 2,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp)
+                            .height(52.dp),
+                    ) {
+                        Text(
+                            if (selected.size >= 2) "Show ${selected.size} bearings on map" else "Tick at least 2 bearings",
+                            style = MaterialTheme.typography.titleMedium,
+                        )
                     }
                 }
             }
@@ -121,13 +162,20 @@ fun ObservationsScreen(store: ObservationStore, onBack: () -> Unit) {
 }
 
 @Composable
-private fun ObservationRow(store: ObservationStore, obs: Observation, onDelete: () -> Unit) {
+private fun ObservationRow(
+    store: ObservationStore,
+    obs: Observation,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    onDelete: () -> Unit,
+) {
     val thumbPx = with(LocalDensity.current) { 72.dp.roundToPx() }
     val thumbnail by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, obs.id) {
         value = store.loadThumbnail(obs, thumbPx)?.asImageBitmap()
     }
     Card(Modifier.fillMaxWidth()) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.padding(end = 12.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Checkbox(checked = checked, onCheckedChange = onCheckedChange)
             val thumbModifier = Modifier
                 .size(72.dp)
                 .clip(RoundedCornerShape(8.dp))

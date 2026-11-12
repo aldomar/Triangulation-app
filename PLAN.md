@@ -1,6 +1,8 @@
 # Triangulation Locator — Android App Plan
 
 > **For Claude Code:** This is the build plan for this repo. Work through the "Build phases" in order, one phase at a time. Each phase must end with an app that builds and runs on a real phone. Stick to the constraints below: free and open-source tools only, no Google Maps SDK, no Google Play Services.
+>
+> **Current progress, decisions made along the way, and handover notes: see [`docs/STATUS.md`](docs/STATUS.md).**
 
 ## Overview
 
