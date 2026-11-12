@@ -58,6 +58,9 @@ sealed interface TerrainResult {
 
     /** No elevation data: not downloaded yet ([downloadsOff]) or the download failed. */
     data class NoData(val downloadsOff: Boolean = false) : TerrainResult
+
+    /** A typed-in bearing: there is no photo tilt, so the land can't place it. */
+    data object NoTilt : TerrainResult
 }
 
 /**

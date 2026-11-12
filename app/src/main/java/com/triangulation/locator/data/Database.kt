@@ -20,12 +20,17 @@ import kotlinx.coroutines.flow.Flow
  * Versions: 1 = Phase 4. 2 = car mode (observations gained headingFromCar, speedMps,
  * lineUpAgeSeconds; added automatically, existing rows get false/null). 3 = magnetic
  * interference check (observations gained magneticFieldRatio; existing rows get null).
+ * 4 = typed-in bearings (observations gained typedIn and note; existing rows get false/null).
  */
 @Database(
     entities = [Session::class, Observation::class],
-    version = 3,
+    version = 4,
     exportSchema = true,
-    autoMigrations = [AutoMigration(from = 1, to = 2), AutoMigration(from = 2, to = 3)],
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2),
+        AutoMigration(from = 2, to = 3),
+        AutoMigration(from = 3, to = 4),
+    ],
 )
 abstract class AppDatabase : RoomDatabase() {
     abstract fun dao(): TriangulationDao

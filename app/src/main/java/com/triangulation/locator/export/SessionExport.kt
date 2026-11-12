@@ -91,7 +91,11 @@ object SessionExport {
 
     private fun coord(value: Double): String = num(value, 7) ?: "0"
 
-    private fun headingSource(o: Observation) = if (o.headingFromCar) "car (GPS + gyroscope)" else "compass"
+    private fun headingSource(o: Observation) = when {
+        o.typedIn -> "typed in"
+        o.headingFromCar -> "car (GPS + gyroscope)"
+        else -> "compass"
+    }
 
     private fun compassLabel(accuracy: Int) = when (accuracy) {
         3 -> "high"
@@ -162,11 +166,12 @@ object SessionExport {
                     "gpsAccuracyM" to number(o.gpsAccuracyM, 1),
                     "altitudeM" to number(o.altitudeM, 1),
                     "headingSource" to headingSource(o),
-                    "compassAccuracy" to if (o.headingFromCar) null else compassLabel(o.compassAccuracy),
+                    "compassAccuracy" to if (o.headingFromCar || o.typedIn) null else compassLabel(o.compassAccuracy),
                     "speedKmh" to number(o.speedMps?.let { it * 3.6 }, 0),
                     "lineUpAgeSeconds" to number(o.lineUpAgeSeconds, 0),
                     "magneticFieldRatio" to number(o.magneticFieldRatio, 2),
                     "magneticInterference" to o.magneticFieldRatio?.let { MagneticCheck.isDisturbed(it) },
+                    "note" to o.note,
                     "distanceToEstimateM" to number(s.fix?.distancesM?.get(i), 0),
                 ),
             )
@@ -277,7 +282,10 @@ object SessionExport {
                 val desc = buildString {
                     append("Bearing ${num(o.bearingDeg, 1)}° ±${num(o.errorDeg, 0)}°")
                     o.gpsAccuracyM?.let { append(", GPS ±${num(it, 0)} m") }
-                    if (o.headingFromCar) {
+                    if (o.typedIn) {
+                        append(", typed in")
+                        o.note?.let { append(": $it") }
+                    } else if (o.headingFromCar) {
                         append(", car mode")
                         o.speedMps?.let { append(" at ${num(it * 3.6, 0)} km/h") }
                         o.lineUpAgeSeconds?.let { append(", lined up ${num(it, 0)} s before") }

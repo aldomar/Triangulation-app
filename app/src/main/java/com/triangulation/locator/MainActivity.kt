@@ -18,9 +18,10 @@ import com.triangulation.locator.ui.MapScreen
 import com.triangulation.locator.ui.SensorTestScreen
 import com.triangulation.locator.ui.SessionScreen
 import com.triangulation.locator.ui.SessionsScreen
+import com.triangulation.locator.ui.TypedBearingScreen
 import com.triangulation.locator.ui.theme.TriangulationTheme
 
-private enum class Screen { Capture, Sensors, History, Session, Map }
+private enum class Screen { Capture, Sensors, History, Session, Map, TypedBearing }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,7 +47,7 @@ class MainActivity : ComponentActivity() {
 
                 when (screen) {
                     Screen.Capture -> Unit
-                    Screen.Map -> BackHandler { screen = Screen.Session }
+                    Screen.Map, Screen.TypedBearing -> BackHandler { screen = Screen.Session }
                     Screen.Session -> BackHandler { screen = sessionOpenedFrom }
                     else -> BackHandler(onBack = backToCapture)
                 }
@@ -68,7 +69,13 @@ class MainActivity : ComponentActivity() {
                         store = store,
                         sessionId = sessionId,
                         onShowMap = { screen = Screen.Map },
+                        onAddTyped = { screen = Screen.TypedBearing },
                         onBack = { screen = sessionOpenedFrom },
+                    )
+                    Screen.TypedBearing -> TypedBearingScreen(
+                        store = store,
+                        sessionId = sessionId,
+                        onDone = { screen = Screen.Session },
                     )
                     Screen.Map -> MapScreen(
                         store = store,

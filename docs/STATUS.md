@@ -25,12 +25,13 @@ _Last updated: 2026-11-12_
 (full plan agreed in conversation; summary here):
 1. **Share result** (`share-result`): Share button (text: location, uncertainty, time, OSM link;
    never observer positions) and Open in map app on the map. No database change.
-   Built and checked on the phone.
+   Built and checked on the phone. PR #9 → `main`.
 2. **Magnetic interference warning** (`compass-interference`): compare measured field strength
    with `GeomagneticField`; warn when off by more than 15%; save the ratio with each bearing (DB v3).
-   Built and checked on the phone (stacked on `share-result`).
+   Built and checked on the phone. PR #10 → `share-result`.
 3. **Type in a bearing** (`typed-bearing`): add a bearing by hand (position, true/magnetic
    bearing, error, time, note), e.g. from a lookout. No photo. DB v4.
+   Built and checked on the phone. PR → `compass-interference`.
 4. **Landmark check** (`landmark-check`): take a bearing of a known point and record the compass
    error. **Measure and record only** (owner's choice); no automatic correction yet. DB v5.
 

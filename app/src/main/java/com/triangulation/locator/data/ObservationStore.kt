@@ -52,6 +52,12 @@ class ObservationStore(context: Context) {
         session
     }
 
+    /** Saves a typed-in bearing (no photo) into [sessionId], ticked. The active session doesn't change. */
+    suspend fun saveTyped(observation: Observation, sessionId: Long) = withContext(Dispatchers.IO) {
+        ready()
+        dao.insertObservation(observation.copy(sessionId = sessionId, included = true, typedIn = true, photoFileName = ""))
+    }
+
     // ---------- Sessions ----------
 
     /** The session new bearings go into: the one last chosen, else the most recently used. */
@@ -88,7 +94,7 @@ class ObservationStore(context: Context) {
     suspend fun deleteSession(id: Long) = withContext(Dispatchers.IO) {
         val photos = dao.photoFileNames(id)
         dao.deleteSession(id)
-        photos.forEach { File(dir, it).delete() }
+        photos.filter { it.isNotBlank() }.forEach { File(dir, it).delete() }
         if (settings.activeSessionId == id) settings.activeSessionId = null
     }
 
@@ -113,11 +119,13 @@ class ObservationStore(context: Context) {
 
     suspend fun delete(observation: Observation) = withContext(Dispatchers.IO) {
         dao.deleteObservation(observation.id)
-        File(dir, observation.photoFileName).delete()
+        // A blank name (typed-in bearing) would point at the photo folder itself.
+        if (observation.hasPhoto) File(dir, observation.photoFileName).delete()
     }
 
-    /** Small preview image, decoded at reduced size to save memory. */
+    /** Small preview image, decoded at reduced size to save memory. Null for typed-in bearings. */
     suspend fun loadThumbnail(observation: Observation, targetPx: Int): Bitmap? = withContext(Dispatchers.IO) {
+        if (!observation.hasPhoto) return@withContext null
         val file = File(dir, observation.photoFileName)
         if (!file.exists()) return@withContext null
         var sample = 1

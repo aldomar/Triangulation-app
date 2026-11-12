@@ -188,6 +188,10 @@ fun Location.declinationDeg(): Double =
         System.currentTimeMillis(),
     ).declination.toDouble()
 
+/** Magnetic declination at a typed or picked position (sea level). Add it to a magnetic bearing for true. */
+fun declinationAt(lat: Double, lon: Double, timeMillis: Long = System.currentTimeMillis()): Double =
+    GeomagneticField(lat.toFloat(), lon.toFloat(), 0f, timeMillis).declination.toDouble()
+
 /**
  * Strength Earth's magnetic field should have here, microtesla, from Android's built-in world
  * model (works offline). Used to spot interference from nearby metal.

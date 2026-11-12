@@ -142,6 +142,20 @@ class SessionExportTest {
     }
 
     @Test
+    fun typedInBearingsAreLabelled() {
+        val typed = twoBearings[1].copy(
+            typedIn = true, note = "Lookout \"Ridge\"", compassAccuracy = -1,
+            photoFileName = "", photoWidth = 0, photoHeight = 0,
+        )
+        val list = listOf(twoBearings[0], typed)
+        val json = SessionExport.geoJson("S", list, time)
+        assertEquals(1, count(json, """"headingSource":"typed in","compassAccuracy":null"""))
+        assertTrue(json, json.contains(""""note":"Lookout \"Ridge\"""""))
+        val gpx = SessionExport.gpx("S", list, time)
+        assertTrue(gpx, gpx.contains("typed in: Lookout &quot;Ridge&quot;"))
+    }
+
+    @Test
     fun fileNamesAreSafe() {
         assertEquals("a_b_c.gpx", SessionExport.fileName("a/b:c", ExportFormat.Gpx))
         assertEquals("Triangulation.geojson", SessionExport.fileName("  ", ExportFormat.GeoJson))
