@@ -48,6 +48,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.ui.text.style.TextOverflow
 import com.triangulation.locator.data.Observation
 import com.triangulation.locator.data.ObservationStore
 import com.triangulation.locator.data.Settings
@@ -101,17 +103,10 @@ private fun buildDrawing(observations: List<Observation>): MapDrawing {
     val lines = observations.map { Sightline(LatLon(it.latitude, it.longitude), it.bearingDeg, it.errorDeg) }
     val result = Solver.solve(lines)
     val proj = LocalProjection.around(lines.map { it.position })
-    val fix = result as? SolveResult.Fix
-
     val wedges = mutableListOf<List<LatLon>>()
     val centres = mutableListOf<List<LatLon>>()
     lines.forEachIndexed { i, line ->
-        // Draw each sightline a bit past the target, or 20 km if there's no fix.
-        val length = if (fix != null) {
-            max(fix.distancesM[i] * 1.4, fix.distancesM[i] + 2 * (fix.uncertaintyRadiusM ?: 0.0))
-        } else {
-            20_000.0
-        }
+        val length = Solver.drawLengthM(result, i)
         val o = proj.toVec(line.position)
         val half = max(line.errorDeg, 0.3)
         val arc = (0..8).map { k ->
@@ -125,14 +120,16 @@ private fun buildDrawing(observations: List<Observation>): MapDrawing {
 }
 
 @Composable
-fun MapScreen(store: ObservationStore, observationIds: List<String>, onBack: () -> Unit) {
+fun MapScreen(store: ObservationStore, sessionId: Long, onBack: () -> Unit) {
     val context = LocalContext.current
     val settings = remember { Settings(context.applicationContext) }
     var tilesOn by remember { mutableStateOf(settings.mapTilesEnabled == true) }
     var askAboutTiles by remember { mutableStateOf(settings.mapTilesEnabled == null) }
 
-    val drawing by produceState<MapDrawing?>(null, observationIds) {
-        val chosen = store.list().filter { it.id in observationIds }.sortedBy { it.timeMillis }
+    val sessionFlow = remember(sessionId) { store.session(sessionId) }
+    val session by sessionFlow.collectAsStateWithLifecycle(null)
+    val drawing by produceState<MapDrawing?>(null, sessionId) {
+        val chosen = store.includedObservations(sessionId)
         value = buildDrawing(chosen)
     }
 
@@ -149,9 +146,11 @@ fun MapScreen(store: ObservationStore, observationIds: List<String>, onBack: () 
             ) {
                 TextButton(onClick = onBack) { Text("← Back") }
                 Text(
-                    "Map",
+                    session?.name ?: "Map",
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
                 )
                 Text("Map background", style = MaterialTheme.typography.bodySmall)
@@ -180,7 +179,7 @@ fun MapScreen(store: ObservationStore, observationIds: List<String>, onBack: () 
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 val d = drawing
-                if (d == null) Text("Working it out…") else ResultsPanel(d)
+                if (d == null) Text("Working it out…") else ResultsPanel(d, session?.name ?: "Triangulation")
             }
         }
     }
@@ -318,11 +317,19 @@ private fun withAlpha(color: Int, alpha: Int) = (color and 0x00FFFFFF) or (alpha
 // ---------- Results panel ----------
 
 @Composable
-private fun ResultsPanel(drawing: MapDrawing) {
+private fun ResultsPanel(drawing: MapDrawing, sessionName: String) {
     val context = LocalContext.current
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            if (drawing.result is SolveResult.Fix) "Estimated location" else "No location yet",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
+        ExportButton(sessionName = sessionName, loadObservations = { drawing.observations })
+    }
     when (val result = drawing.result) {
         is SolveResult.Fix -> {
-            Text("Estimated location", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             val coords = "${fmt(result.point.lat, 6)}, ${fmt(result.point.lon, 6)}"
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(coords, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
@@ -334,14 +341,13 @@ private fun ResultsPanel(drawing: MapDrawing) {
             }
             ValueRow(
                 "Uncertainty",
-                result.uncertaintyRadiusM?.let { "within about ${distance(it)}" } ?: "too large to draw",
+                result.uncertaintyRadiusM?.let { "within about ${distanceText(it)}" } ?: "too large to draw",
             )
             ValueRow("Best crossing angle", "${result.bestCrossingAngleDeg.roundToInt()}°")
-            result.rmsMissM?.let { ValueRow("Lines miss the point by", "about ${distance(it)} on average") }
+            result.rmsMissM?.let { ValueRow("Lines miss the point by", "about ${distanceText(it)} on average") }
             result.warnings.forEach { WarningText(warningText(it)) }
         }
         is SolveResult.NoFix -> {
-            Text("No location yet", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             WarningText(noFixText(result))
         }
     }
@@ -358,7 +364,7 @@ private fun ResultsPanel(drawing: MapDrawing) {
             Spacer(Modifier.width(8.dp))
             Text(
                 "${lineLabel(i)}  ${fmt(obs.bearingDeg, 1)}° ±${obs.errorDeg.roundToInt()}°" +
-                    (fix?.let { "  ·  ${distance(it.distancesM[i])} away" } ?: ""),
+                    (fix?.let { "  ·  ${distanceText(it.distancesM[i])} away" } ?: ""),
                 fontWeight = FontWeight.Medium,
                 modifier = Modifier.weight(1f),
             )
@@ -387,19 +393,17 @@ private fun warningText(w: SolveWarning) = when (w) {
             "Calibrate the compass and retake, or add a bearing from another direction."
     SolveWarning.BearingsDisagree ->
         "The bearings disagree more than their error bands allow. One may be wrong, or the smoke " +
-            "moved between shots. Try unticking one on the Saved screen."
+            "moved between shots. Try unticking one in the session list."
 }
 
 private fun noFixText(r: SolveResult.NoFix) = when (r.reason) {
-    NoFixReason.TooFewBearings -> "Select at least two bearings on the Saved screen."
+    NoFixReason.TooFewBearings -> "Tick at least two bearings in the session list."
     NoFixReason.ObserversTooClose ->
         "All bearings were taken from nearly the same spot. Take another from somewhere else: the further away, the better."
     NoFixReason.Parallel ->
         "The sightlines are almost parallel, so they never cross. Take a bearing from a place well off to the side."
     NoFixReason.BehindObserver ->
         "Sightline ${r.observerIndex?.let(::lineLabel) ?: ""} points away from where the others cross. " +
-            "Check that bearing, or untick it on the Saved screen."
+            "Check that bearing, or untick it in the session list."
 }
 
-private fun distance(m: Double): String =
-    if (m < 1000) "${(m / 10).roundToInt() * 10} m" else "${fmt(m / 1000, 1)} km"

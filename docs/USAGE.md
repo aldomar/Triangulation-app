@@ -38,14 +38,59 @@ The further apart the places, the better. Ideally the two sightlines should cros
 angle (more than 30°). If two people take bearings at the same time from different places,
 moving smoke won't spoil the result.
 
-## Saved bearings
+## Sessions
 
-Tap **Saved** at the top of the main screen to see every bearing: its photo, direction,
-error band, time, position and compass quality. Tap **Delete** to remove one, or
-**Delete all** to start fresh. Deleted bearings can't be recovered.
+A **session** holds all the bearings of **one object**, for example one smoke column. The
+line under the title on the main screen shows which session new bearings go into (the
+**active** session).
 
-**Tick** the bearings that point at the same object (the two newest are ticked for you),
-then tap **Show … bearings on map**.
+- **Start a new session** for each new object: tap **New session**, type a name you'll
+  recognise (such as "Smoke north of town"), and tap **Start**. If you just take a bearing
+  without one, the app starts a session for you, named after the date and time.
+- **Tap the session's name** on the main screen to open it.
+- When you open the app again, it carries on with the session you used last.
+
+### History
+
+Tap **History** at the top of the main screen to see every session, newest first, with its
+date, how many bearings it has, and its estimated location (once it has two ticked bearings).
+The **Active** label marks the session new bearings go into. Tap a session to open it.
+
+Bearings saved with an older version of the app are in a session called **Earlier bearings**.
+
+### Inside a session
+
+You'll see each bearing: its photo, direction, error band, time, position and compass quality.
+
+- **Tick** the bearings to use. Ticked bearings are used on the map and in exports. New
+  bearings are ticked automatically. Ticks are remembered, even if you close the app.
+- **Show … bearings on map** opens the map (needs at least two ticked).
+- **Move** puts a bearing into another session, for example if you forgot to start a new one.
+- **Delete** (on a bearing) removes that bearing and its photo.
+- At the top: **Rename** the session, **Delete** it with all its bearings and photos,
+  **Make active** to send new bearings to it, and **Export…** (see below).
+
+Deleted bearings and sessions can't be recovered.
+
+## Exporting a session
+
+**Export…** is at the top of a session and next to the result below the map. It saves the
+ticked bearings, their sightlines, the estimated location and its uncertainty area as a file
+that other map apps can open. Photos aren't included.
+
+1. Tap **Export…** and choose a file type:
+   - **GeoJSON**: for QGIS, geojson.io, Google Earth and most mapping tools.
+   - **GPX**: for hiking and GPS apps such as OsmAnd, Gaia GPS or caltopo.
+2. Android's **Save** screen opens. Pick a folder (for example **Downloads**) or a cloud
+   drive app, change the file name if you like, and tap **Save**.
+
+The app never sends the file anywhere itself. It only goes to a cloud service if you pick one
+on the Save screen.
+
+**What's in the file:** a point for each place you stood (A, B, C…) with its bearing, error
+band, time and GPS accuracy, a line for each sightline, a point for the estimated location,
+and its uncertainty area. GeoJSON stores the area as a shape. GPX can't store shapes, so the
+area is drawn as a closed track around it.
 
 ## The map
 
@@ -75,7 +120,7 @@ Change your mind any time with the **Map background** switch at the top of the m
 
 | Item | Meaning |
 | --- | --- |
-| Estimated location | Latitude and longitude of the object. Tap **Copy** to paste them into a message or another map app. |
+| Estimated location | Latitude and longitude of the object. Tap **Copy** to paste them into a message or another map app, or **Export…** to save a file. |
 | Uncertainty | The object is probably within this distance of the estimated location. |
 | Best crossing angle | The widest angle between any two sightlines. Above 30° is good, and close to 90° is best. |
 | Lines miss the point by | With 3 or more bearings: how closely they agree. Small numbers mean they agree well. |
@@ -87,7 +132,7 @@ Change your mind any time with the **Map background** switch at the top of the m
 | --- | --- |
 | Shallow angle | The lines are close to parallel, so the point could be anywhere along them. Take another bearing from a place well off to the side. |
 | Error bands too wide | Calibrate the compass (figure-8), retake, or add a bearing from another direction. |
-| Bearings disagree | One bearing may be wrong, or the smoke moved. Untick bearings one at a time on the Saved screen to find the odd one out. |
+| Bearings disagree | One bearing may be wrong, or the smoke moved. Untick bearings one at a time in the session to find the odd one out. |
 | Points away / no location | A bearing points away from where the others cross. Check it, or untick it. |
 | Over 50 km away | The estimate is less accurate this far out. |
 
@@ -147,5 +192,6 @@ so calibration really matters.
 ## Battery and storage
 
 The camera, GPS, sensors and map run only while the app is on screen. They stop as soon as you
-switch away. Each saved photo is small (a few hundred KB). Map images are kept to about 50 MB,
+switch away. Each saved photo is small (a few hundred KB). Deleting a session or bearing
+frees its photo's space straight away. Map images are kept to about 50 MB,
 and Android can clear them if the phone runs low on space.

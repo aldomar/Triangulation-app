@@ -6,6 +6,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -14,11 +15,12 @@ import androidx.compose.ui.platform.LocalContext
 import com.triangulation.locator.data.ObservationStore
 import com.triangulation.locator.ui.CaptureScreen
 import com.triangulation.locator.ui.MapScreen
-import com.triangulation.locator.ui.ObservationsScreen
 import com.triangulation.locator.ui.SensorTestScreen
+import com.triangulation.locator.ui.SessionScreen
+import com.triangulation.locator.ui.SessionsScreen
 import com.triangulation.locator.ui.theme.TriangulationTheme
 
-private enum class Screen { Capture, Sensors, Observations, Map }
+private enum class Screen { Capture, Sensors, History, Session, Map }
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -29,14 +31,23 @@ class MainActivity : ComponentActivity() {
                 val context = LocalContext.current
                 val store = remember { ObservationStore(context.applicationContext) }
                 var screen by rememberSaveable { mutableStateOf(Screen.Capture) }
-                // Bearings ticked on the Saved screen (null = not chosen yet).
-                var selectedIds by remember { mutableStateOf<Set<String>?>(null) }
+                // The session being looked at (Session and Map screens). Saved, so it survives
+                // Android closing the app in the background.
+                var sessionId by rememberSaveable { mutableLongStateOf(0L) }
+                // Where Back from a session goes: History, or Capture if opened from there.
+                var sessionOpenedFrom by rememberSaveable { mutableStateOf(Screen.History) }
+
                 val backToCapture = { screen = Screen.Capture }
-                val backToSaved = { screen = Screen.Observations }
+                fun openSession(id: Long, from: Screen) {
+                    sessionId = id
+                    sessionOpenedFrom = from
+                    screen = Screen.Session
+                }
 
                 when (screen) {
                     Screen.Capture -> Unit
-                    Screen.Map -> BackHandler(onBack = backToSaved)
+                    Screen.Map -> BackHandler { screen = Screen.Session }
+                    Screen.Session -> BackHandler { screen = sessionOpenedFrom }
                     else -> BackHandler(onBack = backToCapture)
                 }
 
@@ -44,20 +55,25 @@ class MainActivity : ComponentActivity() {
                     Screen.Capture -> CaptureScreen(
                         store = store,
                         onOpenSensors = { screen = Screen.Sensors },
-                        onOpenObservations = { screen = Screen.Observations },
+                        onOpenHistory = { screen = Screen.History },
+                        onOpenSession = { openSession(it, Screen.Capture) },
                     )
                     Screen.Sensors -> SensorTestScreen(onBack = backToCapture)
-                    Screen.Observations -> ObservationsScreen(
+                    Screen.History -> SessionsScreen(
                         store = store,
-                        selectedIds = selectedIds,
-                        onSelectionChange = { selectedIds = it },
-                        onShowMap = { screen = Screen.Map },
+                        onOpenSession = { openSession(it, Screen.History) },
                         onBack = backToCapture,
+                    )
+                    Screen.Session -> SessionScreen(
+                        store = store,
+                        sessionId = sessionId,
+                        onShowMap = { screen = Screen.Map },
+                        onBack = { screen = sessionOpenedFrom },
                     )
                     Screen.Map -> MapScreen(
                         store = store,
-                        observationIds = selectedIds.orEmpty().toList(),
-                        onBack = backToSaved,
+                        sessionId = sessionId,
+                        onBack = { screen = Screen.Session },
                     )
                 }
             }

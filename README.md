@@ -9,19 +9,24 @@ Where those lines of sight cross is roughly where the object is.
 > This app gives an estimate to guide where to look. It is not a location to dispatch
 > emergency services to. **For a real fire, call 911 or your local fire agency.**
 
-## What works now (Phase 3)
+## What works now (Phase 4)
 
 - **Take a bearing:** point the camera's crosshair at the object and press the button. The
   app averages the compass over one second, takes a photo, and records your GPS position.
   You then tap exactly on the object in the photo, and the app works out the precise direction.
-- **Saved bearings:** a list of every bearing taken, with photo, direction, position and time.
-  Tick two or more and show them on the map.
+- **Sessions:** bearings of the same object are kept together in a session (for example
+  "Smoke north of town"). New bearings go into the active session; start a new one for each
+  new object.
+- **History:** every session with its date, number of bearings and estimated location. Open one
+  to see its bearings, tick the ones to use, rename it, move bearings between sessions, or delete.
 - **Map:** each sightline drawn as a coloured wedge, the estimated location where they cross,
   and a shaded area showing how far off it might be. Works with 2 bearings or more. Warns about
   shallow crossing angles and bearings that don't agree.
+- **Export:** save a session as a **GeoJSON** or **GPX** file to open in other map apps
+  (QGIS, Google Earth, OsmAnd, caltopo…). You choose where the file goes.
 - **Sensor check:** a live readout of GPS accuracy, compass heading, tilt and compass calibration.
 
-Next: saving sessions and exporting results (GPX/GeoJSON). See `PLAN.md`.
+Next: sharing sessions between phones over a private network (Tailscale). See `PLAN.md`.
 
 ## Privacy
 
@@ -32,6 +37,7 @@ Next: saving sessions and exporting results (GPX/GeoJSON). See `PLAN.md`.
   OpenStreetMap's servers see which area you're looking at and your internet address.
   Your bearings, photos and GPS position are never sent. With it off, the map shows a plain
   grid and the app makes no internet connections at all.
+- **Export** writes a file only where you choose. The app never sends it anywhere itself.
 - No ads, no tracking, no accounts. Everything used to build it is free.
 
 ## Guides

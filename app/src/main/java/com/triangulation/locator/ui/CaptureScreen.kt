@@ -72,6 +72,8 @@ import com.triangulation.locator.camera.takeUprightPhoto
 import com.triangulation.locator.data.BearingMath
 import com.triangulation.locator.data.Observation
 import com.triangulation.locator.data.ObservationStore
+import com.triangulation.locator.data.Session
+import androidx.compose.ui.text.style.TextOverflow
 import com.triangulation.locator.sensors.OrientationState
 import com.triangulation.locator.sensors.circularMeanDeg
 import com.triangulation.locator.sensors.circularSpreadDeg
@@ -123,7 +125,8 @@ private sealed interface Step {
 fun CaptureScreen(
     store: ObservationStore,
     onOpenSensors: () -> Unit,
-    onOpenObservations: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onOpenSession: (Long) -> Unit,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -141,6 +144,24 @@ fun CaptureScreen(
     var optics by remember { mutableStateOf<CameraOptics?>(null) }
     var cameraError by remember { mutableStateOf<String?>(null) }
 
+    // The session new bearings go into. Null until the first bearing starts one.
+    var activeSession by remember { mutableStateOf<Session?>(null) }
+    var namingSession by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { activeSession = store.activeSession() }
+
+    if (namingSession) {
+        SessionNameDialog(
+            title = "New session",
+            initial = ObservationStore.defaultSessionName(),
+            confirmLabel = "Start",
+            onConfirm = { name ->
+                namingSession = false
+                scope.launch { activeSession = store.startSession(name) }
+            },
+            onDismiss = { namingSession = false },
+        )
+    }
+
     val current = step
     if (current is Step.Review) {
         BackHandler { step = Step.Aiming }
@@ -150,8 +171,13 @@ fun CaptureScreen(
             onSave = { observation ->
                 scope.launch {
                     try {
-                        store.save(observation, current.pending.photo)
-                        Toast.makeText(context, "Saved. Take the next one from a different place.", Toast.LENGTH_LONG).show()
+                        val session = store.save(observation, current.pending.photo)
+                        activeSession = session
+                        Toast.makeText(
+                            context,
+                            "Saved to \"${session.name}\". Take the next one from a different place.",
+                            Toast.LENGTH_LONG,
+                        ).show()
                     } catch (e: CancellationException) {
                         throw e
                     } catch (e: Exception) {
@@ -178,8 +204,13 @@ fun CaptureScreen(
                         modifier = Modifier.weight(1f),
                     )
                     TextButton(onClick = onOpenSensors) { Text("Sensors") }
-                    TextButton(onClick = onOpenObservations) { Text("Saved") }
+                    TextButton(onClick = onOpenHistory) { Text("History") }
                 }
+                SessionBar(
+                    session = activeSession,
+                    onOpen = { activeSession?.let { onOpenSession(it.id) } },
+                    onNew = { namingSession = true },
+                )
 
                 if (!hasCamera || !hasFineLocation) {
                     PermissionsNeeded(
@@ -309,6 +340,31 @@ private suspend fun takeBearing(
     } catch (e: Exception) {
         Log.e(TAG, "Capture failed", e)
         return null
+    }
+}
+
+/** Which session new bearings go into. Tap the name to open it. */
+@Composable
+private fun SessionBar(session: Session?, onOpen: () -> Unit, onNew: () -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "Session:",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (session != null) {
+            TextButton(onClick = onOpen, modifier = Modifier.weight(1f)) {
+                Text(session.name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth())
+            }
+        } else {
+            Text(
+                " starts with your first bearing",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        OutlinedButton(onClick = onNew) { Text("New session") }
     }
 }
 
