@@ -1,7 +1,10 @@
 package com.triangulation.locator.ui
 
+import android.content.ActivityNotFoundException
 import android.content.ClipData
 import android.content.ClipboardManager
+import android.content.Intent
+import android.net.Uri
 import android.graphics.DashPathEffect
 import android.graphics.Paint
 import android.widget.Toast
@@ -61,6 +64,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import com.triangulation.locator.data.Observation
 import com.triangulation.locator.data.ObservationStore
 import com.triangulation.locator.data.Settings
+import com.triangulation.locator.export.ShareText
 import com.triangulation.locator.map.DotsOverlay
 import com.triangulation.locator.map.MapDot
 import com.triangulation.locator.map.configureMaps
@@ -451,6 +455,9 @@ private fun withAlpha(color: Int, alpha: Int) = (color and 0x00FFFFFF) or (alpha
 private fun ResultsPanel(drawing: MapDrawing, sessionName: String, t: TerrainControls) {
     val singleTerrain = if (drawing.single) drawing.terrain?.firstOrNull() else null
     val singleFound = singleTerrain as? TerrainResult.Found
+    val shareText = remember(drawing, sessionName) {
+        ShareText.build(sessionName, drawing.observations, drawing.result, drawing.terrain)
+    }
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text(
             when {
@@ -467,7 +474,7 @@ private fun ResultsPanel(drawing: MapDrawing, sessionName: String, t: TerrainCon
     val result = drawing.result
     when {
         result is SolveResult.Fix -> {
-            CoordinatesRow(result.point)
+            CoordinatesRow(result.point, shareText)
             ValueRow(
                 "Uncertainty",
                 result.uncertaintyRadiusM?.let { "within about ${distanceText(it)}" } ?: "too large to draw",
@@ -478,7 +485,7 @@ private fun ResultsPanel(drawing: MapDrawing, sessionName: String, t: TerrainCon
         }
         drawing.single -> when {
             singleFound != null -> {
-                CoordinatesRow(singleFound.point)
+                CoordinatesRow(singleFound.point, shareText)
                 ValueRow("Distance", "about ${distanceText(singleFound.distanceM)}")
                 ValueRow("Likely between", rangeText(singleFound))
                 if (singleFound.veryUncertain) WarningText(VERY_UNCERTAIN_TEXT)
@@ -540,18 +547,40 @@ private fun ResultsPanel(drawing: MapDrawing, sessionName: String, t: TerrainCon
     )
 }
 
-/** Coordinates in large text with a Copy button. */
+/**
+ * Coordinates in large text, with Copy, Share and Open-in-map-app buttons.
+ * Share and Open hand the text to an app the user picks; this app sends nothing itself.
+ */
 @Composable
-private fun CoordinatesRow(point: LatLon) {
+private fun CoordinatesRow(point: LatLon, shareText: String?) {
     val context = LocalContext.current
     val coords = "${fmt(point.lat, 6)}, ${fmt(point.lon, 6)}"
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(coords, style = MaterialTheme.typography.titleLarge, modifier = Modifier.weight(1f))
+    Text(coords, style = MaterialTheme.typography.titleLarge)
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        val padding = PaddingValues(horizontal = 14.dp)
         OutlinedButton(onClick = {
             context.getSystemService(ClipboardManager::class.java)
                 .setPrimaryClip(ClipData.newPlainText("Estimated location", coords))
             Toast.makeText(context, "Coordinates copied", Toast.LENGTH_SHORT).show()
-        }) { Text("Copy") }
+        }, contentPadding = padding) { Text("Copy") }
+        if (shareText != null) {
+            OutlinedButton(onClick = {
+                val send = Intent(Intent.ACTION_SEND)
+                    .setType("text/plain")
+                    .putExtra(Intent.EXTRA_TEXT, shareText)
+                context.startActivity(Intent.createChooser(send, "Share estimated location"))
+            }, contentPadding = padding) { Text("Share") }
+        }
+        // weight(fill = false): on a narrow phone this button wraps its text instead of being cut off.
+        TextButton(modifier = Modifier.weight(1f, fill = false), onClick = {
+            val ll = "${fmt(point.lat, 6)},${fmt(point.lon, 6)}"
+            val geo = Uri.parse("geo:$ll?q=$ll(${Uri.encode("Estimated location")})")
+            try {
+                context.startActivity(Intent(Intent.ACTION_VIEW, geo))
+            } catch (e: ActivityNotFoundException) {
+                Toast.makeText(context, "No map app on this phone can open it", Toast.LENGTH_SHORT).show()
+            }
+        }) { Text("Open in map app") }
     }
 }
 

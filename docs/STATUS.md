@@ -4,7 +4,7 @@ Read this first when picking the project up in a new conversation. It records wh
 stands, decisions already made, and how the owner likes to work. `PLAN.md` is the original
 build plan; `CLAUDE.md` holds the standing rules.
 
-_Last updated: 2026-11-11_
+_Last updated: 2026-11-12_
 
 ## Where we are
 
@@ -17,6 +17,21 @@ _Last updated: 2026-11-11_
 | 4b. Car mode + driving test (added by owner before Phase 5) | Built and run on a phone; DB upgrade v1→v2 kept all bearings; car-mode UI, line-up checks and driving-test card behave correctly when stationary; all tests pass. **Not yet road-tested.** | `phase-4b-car-mode` | #5 → `phase-4-history-export` |
 | 5. Tailnet sharing | **On hold** (owner's choice). Plan saved in `docs/PHASE5-PLAN.md`; not built. | | |
 | 6. Single-photo mode (terrain estimate) | Code complete; pushed and PR opened at the owner's request. **Outdoor testing still to do** (checklist below). | `phase-6-single-photo` | #6 → `phase-4b-car-mode` |
+| Map layout fix | Done, checked on the phone | `map-layout-fix` | #7 → `phase-6-single-photo` |
+
+**On 2026-11-12 the owner merged PRs #1–#8 into `main`.** New work branches off `main`.
+
+**Improvements chosen by the owner (2026-11-12),** built in this order, one branch and PR each
+(full plan agreed in conversation; summary here):
+1. **Share result** (`share-result`): Share button (text: location, uncertainty, time, OSM link;
+   never observer positions) and Open in map app on the map. No database change.
+   Code written; waiting for the owner to build and check.
+2. **Magnetic interference warning** (`compass-interference`): compare measured field strength
+   with `GeomagneticField`; warn when off by more than 15%; save the ratio with each bearing (DB v3).
+3. **Type in a bearing** (`typed-bearing`): add a bearing by hand (position, true/magnetic
+   bearing, error, time, note), e.g. from a lookout. No photo. DB v4.
+4. **Landmark check** (`landmark-check`): take a bearing of a known point and record the compass
+   error. **Measure and record only** (owner's choice); no automatic correction yet. DB v5.
 
 **Immediate next step:** outdoor testing of Phases 6 and 4b (checklists below), then tune the
 guesses from the results. Phase 5 is on hold (plan kept in `docs/PHASE5-PLAN.md`).
@@ -32,10 +47,6 @@ guesses from the results. Phase 5 is on hold (plan kept in `docs/PHASE5-PLAN.md`
 - [ ] With 2+ bearings: terrain points land near the crossing point.
 - [ ] Export from the map with terrain on: GeoJSON/GPX open correctly with the terrain points/areas.
 - [ ] Tap-offset correction away from the photo centre (still unverified from Phase 2).
-**Map screen layout fix** (branch `map-layout-fix`, off `phase-6-single-photo`): the map is now
-clipped to its own area, and the top bar and bottom panel have solid backgrounds, so the map
-can't cover them while zooming. Built and checked on the phone; PR #7 → `phase-6-single-photo`.
-
 **Pending whenever the owner has time:** road-test the driving test, then car-mode bearings.
 Use the results to tune the guesses listed below.
 
@@ -93,9 +104,9 @@ JSON bearings migrated into "Earlier bearings" with their photos on the owner's 
 
 ## How the owner works
 
-- **Stacked PRs as save points.** Each phase gets its own branch, made from the previous
-  phase's branch, and its PR targets that previous branch. The owner merges the whole stack
-  later. Never commit to `main`, and never merge or approve PRs.
+- **PRs as save points.** Each feature gets its own branch and PR. Since 2026-11-12 (stack
+  merged) branches come off `main`; if the previous PR isn't merged yet, branch off it instead.
+  The owner merges. Never commit to `main`, and never merge or approve PRs.
 - **The owner builds and runs the app** in Android Studio and reports errors back. Don't run
   Gradle builds or emulators without asking (usage cost). Since nothing compiles the code
   before the owner does, re-read new code carefully for compile errors.
