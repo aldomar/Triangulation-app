@@ -149,6 +149,7 @@ object TerrainEstimator {
         tiltErrorDeg: Double,
         allowDownload: Boolean,
     ): TerrainResult = withContext(Dispatchers.IO) {
+        if (obs.typedIn) return@withContext TerrainResult.NoTilt
         val tiles = TerrainTiles.get(context)
         val angle = BearingMath.elevationAngleDeg(obs)
         repeat(MAX_TILE_LOADS) {

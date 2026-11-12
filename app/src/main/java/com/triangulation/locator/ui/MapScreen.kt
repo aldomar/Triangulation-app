@@ -645,6 +645,7 @@ private fun terrainProblemText(r: TerrainResult): String = when (r) {
     is TerrainResult.NoData ->
         if (r.downloadsOff) "no elevation data saved for this area. Turn on \"Download elevation data\"."
         else "couldn't get elevation data. Check the internet connection and try again."
+    TerrainResult.NoTilt -> "typed-in bearings have no camera tilt, so the shape of the land can't place them."
 }
 
 private fun warningText(w: SolveWarning) = when (w) {

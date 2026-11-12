@@ -116,6 +116,25 @@ you were looking, and compass quality.
 
 Deleted bearings and sessions can't be recovered.
 
+### Adding a bearing by hand
+
+Use this for a bearing someone else measured: a fire lookout on the radio, a hand compass, or
+another person's phone. Open the session and tap **Add a bearing by hand** (below the list).
+
+1. **Where it was taken from.** Type the position, for example `49.2827, -123.1207`, or
+   `49°16.9' N 123°07.2' W`. Or tap **Use my GPS position** if you took it yourself where you
+   stand, or **Pick on map** to tap the spot on a map.
+2. **Bearing** in degrees (0–360). Choose **True north** or **Magnetic north**. Fire lookouts
+   and maps usually give true bearings. A hand compass gives magnetic, unless it has been set
+   for declination. For magnetic, the app adds the declination at that place for you.
+3. **Error band:** how far off it might be. A lookout's firefinder or a good hand compass is
+   about ±2–5°. Use ±10° or more for a rough guess.
+4. **Taken how many minutes ago** (0 = now), and an optional **note**, such as who reported it.
+5. Tap **Save bearing**.
+
+It appears in the list marked **Typed in**, with no photo, and is used on the map and in exports
+like any other bearing. It has no camera tilt, so the **Terrain estimate** can't place it.
+
 ## Exporting a session
 
 **Export…** is at the top of a session and next to the result below the map. It saves the

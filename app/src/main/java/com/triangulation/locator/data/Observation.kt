@@ -75,6 +75,16 @@ data class Observation(
      * Null for car mode and for bearings saved before this was recorded.
      */
     val magneticFieldRatio: Double? = null,
+    /**
+     * True if typed in by hand (for example a lookout's bearing heard on the radio), not
+     * measured by this phone. There is no photo ([photoFileName] is blank, size 0), no tilt
+     * (pitch/roll 0, so no terrain estimate) and [compassAccuracy] is -1. If typed as a true
+     * bearing, [magneticHeadingDeg] holds it and [declinationDeg] is 0 (as in car mode); if typed
+     * as magnetic, they hold the typed value and the declination at that place.
+     */
+    @ColumnInfo(defaultValue = "0") val typedIn: Boolean = false,
+    /** Free text from the user, e.g. who reported a typed-in bearing. */
+    val note: String? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", 1)
@@ -103,6 +113,8 @@ data class Observation(
         putOpt("speedMps", speedMps)
         putOpt("lineUpAgeSeconds", lineUpAgeSeconds)
         putOpt("magneticFieldRatio", magneticFieldRatio)
+        put("typedIn", typedIn)
+        putOpt("note", note)
     }
 
     companion object {
@@ -132,9 +144,17 @@ data class Observation(
             speedMps = o.optDoubleOrNull("speedMps"),
             lineUpAgeSeconds = o.optDoubleOrNull("lineUpAgeSeconds"),
             magneticFieldRatio = o.optDoubleOrNull("magneticFieldRatio"),
+            typedIn = o.optBoolean("typedIn", false),
+            note = if (o.has("note") && !o.isNull("note")) o.getString("note") else null,
         )
 
         private fun JSONObject.optDoubleOrNull(key: String): Double? =
             if (has(key) && !isNull(key)) getDouble(key) else null
     }
 }
+
+/**
+ * Whether a photo file belongs to this bearing (typed-in bearings have none).
+ * An extension, not a member, so Room doesn't treat it as a column.
+ */
+val Observation.hasPhoto: Boolean get() = photoFileName.isNotBlank()

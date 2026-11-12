@@ -28,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,6 +48,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,6 +72,7 @@ fun SessionScreen(
     store: ObservationStore,
     sessionId: Long,
     onShowMap: () -> Unit,
+    onAddTyped: () -> Unit,
     onBack: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -128,11 +131,13 @@ fun SessionScreen(
 
             when {
                 list == null -> Text("Loading…", Modifier.padding(16.dp))
-                list.isEmpty() -> Text(
-                    "No bearings in this session yet. New bearings go into the active session. You'll need " +
-                        "at least two, from different places, to locate the object.",
-                    Modifier.padding(16.dp),
-                )
+                list.isEmpty() -> Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "No bearings in this session yet. New bearings go into the active session. You'll need " +
+                            "at least two, from different places, to locate the object.",
+                    )
+                    AddTypedButton(onAddTyped)
+                }
                 else -> {
                     LazyColumn(
                         modifier = Modifier.weight(1f),
@@ -157,6 +162,7 @@ fun SessionScreen(
                                 onDelete = { toDelete = obs },
                             )
                         }
+                        item { AddTypedButton(onAddTyped) }
                     }
                     Button(
                         onClick = onShowMap,
@@ -228,6 +234,14 @@ fun SessionScreen(
     }
 }
 
+/** Opens the form for a bearing someone else measured (e.g. a lookout on the radio). */
+@Composable
+private fun AddTypedButton(onClick: () -> Unit) {
+    OutlinedButton(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
+        Text("Add a bearing by hand")
+    }
+}
+
 @Composable
 private fun ObservationRow(
     store: ObservationStore,
@@ -248,7 +262,19 @@ private fun ObservationRow(
                 .clip(RoundedCornerShape(8.dp))
             thumbnail?.let {
                 Image(it, contentDescription = "Photo", contentScale = ContentScale.Crop, modifier = thumbModifier)
-            } ?: Box(thumbModifier.background(MaterialTheme.colorScheme.surfaceVariant))
+            } ?: Box(
+                thumbModifier.background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (obs.typedIn) {
+                    Text(
+                        "Typed\nin",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
@@ -266,12 +292,20 @@ private fun ObservationRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Text(
-                    lookAngleText(BearingMath.elevationAngleDeg(obs)),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                if (obs.headingFromCar) {
+                if (!obs.typedIn) {
+                    Text(
+                        lookAngleText(BearingMath.elevationAngleDeg(obs)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                if (obs.typedIn) {
+                    Text(
+                        "Typed in by hand" + (obs.note?.let { ": $it" } ?: ""),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else if (obs.headingFromCar) {
                     Text(
                         "Car mode" +
                             (obs.speedMps?.let { ", ${(it * 3.6).roundToInt()} km/h" } ?: "") +
