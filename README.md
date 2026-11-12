@@ -35,6 +35,8 @@ Where those lines of sight cross is roughly where the object is.
 - **Share the result:** send the estimated location, how sure it is, the time and an
   OpenStreetMap link to any app you choose (messages, email…), or open it in another map app.
 - **Sensor check:** a live readout of GPS accuracy, compass heading, tilt and compass calibration.
+- **Compass check against a landmark:** take a bearing of something whose position you know
+  and see how far off the compass is. Results are kept in a list; bearings aren't changed.
 - **Bearings typed in by hand:** add a bearing someone else measured (a fire lookout on the
   radio, a hand compass) by typing or picking the position and the bearing.
 - **Magnetic interference warning:** the app notices when nearby metal (a car, a fence, a

@@ -21,15 +21,17 @@ import kotlinx.coroutines.flow.Flow
  * lineUpAgeSeconds; added automatically, existing rows get false/null). 3 = magnetic
  * interference check (observations gained magneticFieldRatio; existing rows get null).
  * 4 = typed-in bearings (observations gained typedIn and note; existing rows get false/null).
+ * 5 = compass checks against landmarks (new table compass_checks; nothing else changes).
  */
 @Database(
-    entities = [Session::class, Observation::class],
-    version = 4,
+    entities = [Session::class, Observation::class, CompassCheck::class],
+    version = 5,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
         AutoMigration(from = 3, to = 4),
+        AutoMigration(from = 4, to = 5),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -122,4 +124,15 @@ interface TriangulationDao {
 
     @Query("DELETE FROM observations WHERE id = :id")
     suspend fun deleteObservation(id: String)
+
+    // ---------- Compass checks ----------
+
+    @Query("SELECT * FROM compass_checks ORDER BY timeMillis DESC")
+    fun compassChecksFlow(): Flow<List<CompassCheck>>
+
+    @Insert
+    suspend fun insertCompassCheck(check: CompassCheck): Long
+
+    @Query("DELETE FROM compass_checks WHERE id = :id")
+    suspend fun deleteCompassCheck(id: Long)
 }

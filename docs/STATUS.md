@@ -31,9 +31,14 @@ _Last updated: 2026-11-12_
    Built and checked on the phone. PR #10 → `share-result`.
 3. **Type in a bearing** (`typed-bearing`): add a bearing by hand (position, true/magnetic
    bearing, error, time, note), e.g. from a lookout. No photo. DB v4.
-   Built and checked on the phone. PR → `compass-interference`.
+   Built and checked on the phone. PR #11 → `compass-interference`.
 4. **Landmark check** (`landmark-check`): take a bearing of a known point and record the compass
    error. **Measure and record only** (owner's choice); no automatic correction yet. DB v5.
+   Built and flow-tested on the phone (indoors); unit tests pass. PR #12 → `typed-bearing`.
+   Starts from the Sensors screen; reuses `CaptureScreen` in check mode (`CheckTarget`) and
+   `PointPicker`. Pure maths in `solver/LandmarkCheck.kt` and great-circle helpers in `Geo.kt`.
+   **Next step after this:** use landmark checks outdoors to decide whether automatic correction
+   is worth building, and to tune the interference limit (15%) and default error bands.
 
 **Immediate next step:** outdoor testing of Phases 6 and 4b (checklists below), then tune the
 guesses from the results. Phase 5 is on hold (plan kept in `docs/PHASE5-PLAN.md`).

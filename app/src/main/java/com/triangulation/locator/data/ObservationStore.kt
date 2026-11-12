@@ -58,6 +58,20 @@ class ObservationStore(context: Context) {
         dao.insertObservation(observation.copy(sessionId = sessionId, included = true, typedIn = true, photoFileName = ""))
     }
 
+    // ---------- Compass checks (landmark) ----------
+
+    /** All compass checks, newest first. */
+    fun compassChecks(): Flow<List<CompassCheck>> = afterReady { dao.compassChecksFlow() }
+
+    suspend fun saveCompassCheck(check: CompassCheck): Long = withContext(Dispatchers.IO) {
+        ready()
+        dao.insertCompassCheck(check)
+    }
+
+    suspend fun deleteCompassCheck(id: Long) = withContext(Dispatchers.IO) {
+        dao.deleteCompassCheck(id)
+    }
+
     // ---------- Sessions ----------
 
     /** The session new bearings go into: the one last chosen, else the most recently used. */

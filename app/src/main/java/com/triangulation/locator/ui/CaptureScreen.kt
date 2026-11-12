@@ -148,13 +148,26 @@ private sealed interface Step {
     class Review(val pending: PendingCapture) : Step
 }
 
-/** Main screen: aim at the target, take a bearing, tap the target on the photo, save. */
+/** A landmark whose position is known, aimed at in compass-check mode. */
+class CheckTarget(val name: String?, val point: LatLon) {
+    val label: String get() = name?.takeIf { it.isNotBlank() } ?: "the landmark"
+}
+
+/**
+ * Main screen: aim at the target, take a bearing, tap the target on the photo, save.
+ *
+ * With [check] set it runs as a compass check instead: no session, no car mode, and the
+ * finished bearing goes to [onCheckMeasured] instead of being saved (the photo is dropped).
+ */
 @Composable
 fun CaptureScreen(
     store: ObservationStore,
     onOpenSensors: () -> Unit,
     onOpenHistory: () -> Unit,
     onOpenSession: (Long) -> Unit,
+    check: CheckTarget? = null,
+    onCheckMeasured: (Observation) -> Unit = {},
+    onCancelCheck: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -165,7 +178,8 @@ fun CaptureScreen(
     // Car mode uses the gyroscope instead of the compass; only one of the two runs at a time.
     val settings = remember { Settings(context.applicationContext) }
     val hasGyro = remember { context.getSystemService(SensorManager::class.java).hasGyroHeading() }
-    val carOn = CarSession.enabled && hasGyro
+    // A compass check must use the compass, so car mode is off for it.
+    val carOn = CarSession.enabled && hasGyro && check == null
     var askCarSafety by remember { mutableStateOf(false) }
     var liningUp by remember { mutableStateOf(false) }
 
@@ -231,7 +245,13 @@ fun CaptureScreen(
         ReviewScreen(
             pending = current.pending,
             onRetake = { step = Step.Aiming },
+            saveLabel = if (check != null) "Compare" else "Save",
             onSave = { observation ->
+                if (check != null) {
+                    step = Step.Aiming
+                    onCheckMeasured(observation)
+                    return@ReviewScreen
+                }
                 scope.launch {
                     try {
                         val session = store.save(observation, current.pending.photo)
@@ -261,20 +281,31 @@ fun CaptureScreen(
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        "Take a bearing",
+                        if (check != null) "Compass check" else "Take a bearing",
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = onOpenSensors) { Text("Sensors") }
-                    TextButton(onClick = onOpenHistory) { Text("History") }
+                    if (check != null) {
+                        TextButton(onClick = onCancelCheck) { Text("Cancel") }
+                    } else {
+                        TextButton(onClick = onOpenSensors) { Text("Sensors") }
+                        TextButton(onClick = onOpenHistory) { Text("History") }
+                    }
                 }
-                SessionBar(
+                if (check != null) {
+                    Text(
+                        "Aim at ${check.label} (${fmt(check.point.lat, 5)}, ${fmt(check.point.lon, 5)}). " +
+                            "Nothing is saved to your sessions.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                } else SessionBar(
                     session = activeSession,
                     onOpen = { activeSession?.let { onOpenSession(it.id) } },
                     onNew = { namingSession = true },
                 )
-                CarModeBar(
+                if (check == null) CarModeBar(
                     available = hasGyro,
                     on = carOn,
                     lineUp = lineUp,
@@ -357,7 +388,11 @@ fun CaptureScreen(
                         }
                     } else {
                         Text(
-                            blocker ?: "Put the crosshair on the object, press the button, and hold still for a second.",
+                            blocker ?: if (check != null) {
+                                "Put the crosshair on ${check.label}, press the button, and hold still for a second."
+                            } else {
+                                "Put the crosshair on the object, press the button, and hold still for a second."
+                            },
                             style = MaterialTheme.typography.bodyMedium,
                             color = if (blocker != null) MaterialTheme.colorScheme.onSurface
                             else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -759,6 +794,7 @@ private fun LiveReadout(orientation: OrientationState, location: Location?, gpsO
 private fun ReviewScreen(
     pending: PendingCapture,
     onRetake: () -> Unit,
+    saveLabel: String,
     onSave: (Observation) -> Unit,
 ) {
     val photo = pending.photo
@@ -879,7 +915,7 @@ private fun ReviewScreen(
                     enabled = !saving,
                     modifier = Modifier.weight(1f).height(52.dp),
                 ) {
-                    Text(if (saving) "Saving…" else "Save")
+                    Text(if (saving) "Saving…" else saveLabel)
                 }
             }
         }

@@ -1,0 +1,359 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 5,
+    "identityHash": "770c47d7f6bcad3538cb860717d0c1aa",
+    "entities": [
+      {
+        "tableName": "sessions",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `name` TEXT NOT NULL, `createdMillis` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdMillis",
+            "columnName": "createdMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "observations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `sessionId` INTEGER NOT NULL, `included` INTEGER NOT NULL, `timeMillis` INTEGER NOT NULL, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, `altitudeM` REAL, `gpsAccuracyM` REAL, `magneticHeadingDeg` REAL NOT NULL, `headingSpreadDeg` REAL NOT NULL, `declinationDeg` REAL NOT NULL, `pitchDeg` REAL NOT NULL, `rollDeg` REAL NOT NULL, `compassAccuracy` INTEGER NOT NULL, `tapX` REAL NOT NULL, `tapY` REAL NOT NULL, `focalLengthFraction` REAL, `tapOffsetDeg` REAL NOT NULL, `bearingDeg` REAL NOT NULL, `errorDeg` REAL NOT NULL, `photoFileName` TEXT NOT NULL, `photoWidth` INTEGER NOT NULL, `photoHeight` INTEGER NOT NULL, `headingFromCar` INTEGER NOT NULL DEFAULT 0, `speedMps` REAL, `lineUpAgeSeconds` REAL, `magneticFieldRatio` REAL, `typedIn` INTEGER NOT NULL DEFAULT 0, `note` TEXT, PRIMARY KEY(`id`), FOREIGN KEY(`sessionId`) REFERENCES `sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sessionId",
+            "columnName": "sessionId",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "included",
+            "columnName": "included",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timeMillis",
+            "columnName": "timeMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latitude",
+            "columnName": "latitude",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "longitude",
+            "columnName": "longitude",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "altitudeM",
+            "columnName": "altitudeM",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "gpsAccuracyM",
+            "columnName": "gpsAccuracyM",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "magneticHeadingDeg",
+            "columnName": "magneticHeadingDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "headingSpreadDeg",
+            "columnName": "headingSpreadDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "declinationDeg",
+            "columnName": "declinationDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "pitchDeg",
+            "columnName": "pitchDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rollDeg",
+            "columnName": "rollDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "compassAccuracy",
+            "columnName": "compassAccuracy",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tapX",
+            "columnName": "tapX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tapY",
+            "columnName": "tapY",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "focalLengthFraction",
+            "columnName": "focalLengthFraction",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "tapOffsetDeg",
+            "columnName": "tapOffsetDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "bearingDeg",
+            "columnName": "bearingDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "errorDeg",
+            "columnName": "errorDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "photoFileName",
+            "columnName": "photoFileName",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "photoWidth",
+            "columnName": "photoWidth",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "photoHeight",
+            "columnName": "photoHeight",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "headingFromCar",
+            "columnName": "headingFromCar",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "speedMps",
+            "columnName": "speedMps",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "lineUpAgeSeconds",
+            "columnName": "lineUpAgeSeconds",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "magneticFieldRatio",
+            "columnName": "magneticFieldRatio",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "typedIn",
+            "columnName": "typedIn",
+            "affinity": "INTEGER",
+            "notNull": true,
+            "defaultValue": "0"
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_observations_sessionId",
+            "unique": false,
+            "columnNames": [
+              "sessionId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_observations_sessionId` ON `${TABLE_NAME}` (`sessionId`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "sessions",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "sessionId"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
+          }
+        ]
+      },
+      {
+        "tableName": "compass_checks",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `timeMillis` INTEGER NOT NULL, `latitude` REAL NOT NULL, `longitude` REAL NOT NULL, `gpsAccuracyM` REAL, `landmarkName` TEXT, `landmarkLatitude` REAL NOT NULL, `landmarkLongitude` REAL NOT NULL, `measuredBearingDeg` REAL NOT NULL, `expectedBearingDeg` REAL NOT NULL, `differenceDeg` REAL NOT NULL, `distanceM` REAL NOT NULL, `compassAccuracy` INTEGER NOT NULL, `magneticFieldRatio` REAL, `headingSpreadDeg` REAL NOT NULL, `tapX` REAL NOT NULL, `tapY` REAL NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "timeMillis",
+            "columnName": "timeMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "latitude",
+            "columnName": "latitude",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "longitude",
+            "columnName": "longitude",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "gpsAccuracyM",
+            "columnName": "gpsAccuracyM",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "landmarkName",
+            "columnName": "landmarkName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "landmarkLatitude",
+            "columnName": "landmarkLatitude",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "landmarkLongitude",
+            "columnName": "landmarkLongitude",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "measuredBearingDeg",
+            "columnName": "measuredBearingDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "expectedBearingDeg",
+            "columnName": "expectedBearingDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "differenceDeg",
+            "columnName": "differenceDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "distanceM",
+            "columnName": "distanceM",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "compassAccuracy",
+            "columnName": "compassAccuracy",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "magneticFieldRatio",
+            "columnName": "magneticFieldRatio",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "headingSpreadDeg",
+            "columnName": "headingSpreadDeg",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tapX",
+            "columnName": "tapX",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tapY",
+            "columnName": "tapY",
+            "affinity": "REAL",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '770c47d7f6bcad3538cb860717d0c1aa')"
+    ]
+  }
+}
