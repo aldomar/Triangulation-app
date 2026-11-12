@@ -70,6 +70,7 @@ import com.triangulation.locator.camera.CameraOptics
 import com.triangulation.locator.camera.cameraProvider
 import com.triangulation.locator.camera.takeUprightPhoto
 import com.triangulation.locator.data.BearingMath
+import com.triangulation.locator.terrain.TerrainMath
 import com.triangulation.locator.data.Observation
 import com.triangulation.locator.data.ObservationStore
 import com.triangulation.locator.data.Session
@@ -773,7 +774,8 @@ private fun ReviewScreen(
         ) {
             Text("Tap exactly on the object", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             Text(
-                "For smoke, tap the base of the column where it leaves the ground.",
+                "For smoke, tap the base of the column where it meets the ground or treeline. That spot also lets " +
+                    "the map estimate the distance from a single photo.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -831,6 +833,10 @@ private fun ReviewScreen(
                     )
                 }
                 ValueRow("Tap correction", "${signed(tapOffset)}°")
+                ValueRow(
+                    "Line of sight",
+                    lookAngleText(TerrainMath.elevationAngleDeg(tapX.toDouble(), tapY.toDouble(), focal, photo.height.toDouble() / photo.width, pending.pitchDeg)),
+                )
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("Error band ±${errorDeg.roundToInt()}°", Modifier.width(140.dp))
                     Slider(

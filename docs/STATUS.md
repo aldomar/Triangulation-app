@@ -15,13 +15,43 @@ _Last updated: 2026-11-11_
 | 3. Solve and map (+ 3+ bearing fit) | Done, built and run on a phone; map displays correctly | `phase-3-solve-and-map` | #3 → `phase-2-capture-flow` |
 | 4. History (Room sessions) + GPX/GeoJSON export | Done, built and run on a phone (old bearings migrated, new sessions work) | `phase-4-history-export` | #4 → `phase-3-solve-and-map` |
 | 4b. Car mode + driving test (added by owner before Phase 5) | Built and run on a phone; DB upgrade v1→v2 kept all bearings; car-mode UI, line-up checks and driving-test card behave correctly when stationary; all tests pass. **Not yet road-tested.** | `phase-4b-car-mode` | #5 → `phase-4-history-export` |
-| 5. Tailnet sharing | Not started | | |
-| 6. Single-photo mode | Not started | | |
+| 5. Tailnet sharing | **On hold** (owner's choice). Plan saved in `docs/PHASE5-PLAN.md`; not built. | | |
+| 6. Single-photo mode (terrain estimate) | Code complete; pushed and PR opened at the owner's request. **Outdoor testing still to do** (checklist below). | `phase-6-single-photo` | #6 → `phase-4b-car-mode` |
 
-**Immediate next step:** plan Phase 5 (tailnet sharing) and get it agreed before coding.
-Create `phase-5-...` from `phase-4b-car-mode`; its PR targets that branch.
+**Immediate next step:** outdoor testing of Phases 6 and 4b (checklists below), then tune the
+guesses from the results. Phase 5 is on hold (plan kept in `docs/PHASE5-PLAN.md`).
+
+**Phase 6 test checklist (still to do):**
+- [ ] Unit tests pass (`TerrainMathTest`, new export test).
+- [ ] Switching on **Terrain estimate** asks about downloads; elevation tiles download (the AWS
+  Terrain Tiles address hasn't been checked from a phone yet) and work again offline.
+- [ ] With downloads off and nothing saved, the "no elevation data" message shows; no network use.
+- [ ] From high ground, one bearing of a known landmark: how far is the terrain estimate off,
+  and is the landmark inside the dashed area? Try tilt error ±1° and ±2°.
+- [ ] From flat ground: confirm the "very uncertain" warning and open-ended far range appear.
+- [ ] With 2+ bearings: terrain points land near the crossing point.
+- [ ] Export from the map with terrain on: GeoJSON/GPX open correctly with the terrain points/areas.
+- [ ] Tap-offset correction away from the photo centre (still unverified from Phase 2).
 **Pending whenever the owner has time:** road-test the driving test, then car-mode bearings.
 Use the results to tune the guesses listed below.
+
+**Single-photo mode (6), agreed design.** The owner accepted all recommendations.
+- Elevation from the free AWS "Terrain Tiles" (Terrarium PNG, zoom 12, about 30 m), decoded with
+  `BitmapFactory`; no new libraries. Opt-in like map tiles: `Settings.elevationDownloadsEnabled`
+  (asked the first time **Terrain estimate** is switched on), a switch below the map. Saved tiles
+  in `cacheDir/terrain`, capped at 100 MB, used offline even with downloads off.
+- Line-of-sight angle from the saved pitch + vertical tap + focal length
+  (`TerrainMath.elevationAngleDeg`), so **old bearings work too and the database is unchanged**.
+  Roll is ignored, as for the tap offset.
+- Eye = elevation-data ground at the observer + 1.5 m (GPS height not used). March every 15 m
+  from 30 m out to 40 km, with Earth curvature and refraction (k = 0.13).
+- Near/far from camera tilt ± error (default ±1°; choices 0.5/1/2°). **Deviation from the plan:**
+  the tilt error is one setting on the map (`Settings.tiltErrorDeg`), not per bearing, to avoid
+  a database change. The area is a ring segment: near–far along the bearing, ± its error band.
+- Shown via a **Terrain estimate** switch on the map (`Settings.showTerrain`), for every ticked
+  bearing. The map now opens with one ticked bearing. Exports from the map include terrain
+  estimates when the switch is on.
+- **Untested guesses:** default tilt error ±1°, "very uncertain" when far > 3 × near or open-ended.
 
 **Car mode (4b), agreed design.** The owner chose to build the driving test and car mode
 together, then road-test later.
@@ -55,6 +85,7 @@ JSON bearings migrated into "Earlier bearings" with their photos on the owner's 
   tested the tap-offset correction away from the photo centre, or triangulated a known point.
   The owner has so far only tested indoors.
 - Car mode and the driving test haven't been used in a car yet.
+- Terrain (single-photo) estimates haven't been checked outdoors or against a known point.
 
 ## How the owner works
 

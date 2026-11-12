@@ -26,7 +26,9 @@ The app opens on the **Take a bearing** screen.
 4. **Put the crosshair on the object** and press **Take bearing**.
 5. **Hold still** while it says "Hold still…" (about one second).
 6. **Tap exactly on the object** in the photo. For smoke, tap the **base** of the column,
-   where it leaves the ground, not the drifting top. The orange circle shows where you tapped.
+   where it meets the ground or the treeline, not the drifting top. That spot also lets the
+   app estimate the distance from this one photo (see **Terrain estimate** below). The
+   **Line of sight** row shows how far up or down you were looking. The orange circle shows where you tapped.
 7. Check the **bearing** shown (the exact direction to the object from where you stand).
 8. Check the **error band** (±°). This is how far off the bearing might be. It starts from how
    well calibrated the compass was. Drag the slider wider if you weren't sure.
@@ -37,6 +39,9 @@ The app opens on the **Take a bearing** screen.
 The further apart the places, the better. Ideally the two sightlines should cross at a wide
 angle (more than 30°). If two people take bearings at the same time from different places,
 moving smoke won't spoil the result.
+
+If you can only take one bearing, the map's **Terrain estimate** can still give a rough
+location, especially from high ground.
 
 ## Car mode (from a moving car, passengers only)
 
@@ -94,11 +99,13 @@ Bearings saved with an older version of the app are in a session called **Earlie
 
 ### Inside a session
 
-You'll see each bearing: its photo, direction, error band, time, position and compass quality.
+You'll see each bearing: its photo, direction, error band, time, position, how far up or down
+you were looking, and compass quality.
 
 - **Tick** the bearings to use. Ticked bearings are used on the map and in exports. New
   bearings are ticked automatically. Ticks are remembered, even if you close the app.
-- **Show … bearings on map** opens the map (needs at least two ticked).
+- **Show … on map** opens the map. Two or more ticked bearings give a crossing point; one
+  ticked bearing can be placed with the **Terrain estimate**.
 - **Move** puts a bearing into another session, for example if you forgot to start a new one.
 - **Delete** (on a bearing) removes that bearing and its photo.
 - At the top: **Rename** the session, **Delete** it with all its bearings and photos,
@@ -110,7 +117,8 @@ Deleted bearings and sessions can't be recovered.
 
 **Export…** is at the top of a session and next to the result below the map. It saves the
 ticked bearings, their sightlines, the estimated location and its uncertainty area as a file
-that other map apps can open. Photos aren't included.
+that other map apps can open. When **Terrain estimate** is on, export from the map to include
+the terrain estimates too. Photos aren't included.
 
 1. Tap **Export…** and choose a file type:
    - **GeoJSON**: for QGIS, geojson.io, Google Earth and most mapping tools.
@@ -124,7 +132,8 @@ on the Save screen.
 **What's in the file:** a point for each place you stood (A, B, C…) with its bearing, error
 band, time and GPS accuracy, a line for each sightline, a point for the estimated location,
 and its uncertainty area. GeoJSON stores the area as a shape. GPX can't store shapes, so the
-area is drawn as a closed track around it.
+area is drawn as a closed track around it. Terrain estimates (if included) add a point and an
+area for each bearing, labelled "A terrain estimate" and so on.
 
 ## The map
 
@@ -175,6 +184,49 @@ best-fit point and shows how well they agree.
 
 The result is an estimate to guide where to look, not a location to dispatch to.
 **For a real fire, call 911 or your local fire agency.**
+
+## Terrain estimate (single-photo mode)
+
+Each photo records not just the direction but also **how far down you were looking**. If you
+tapped where the smoke meets the ground, the app can follow that line of sight from your eye
+until it reaches the land, using free elevation data. That gives a distance, and so a
+location, from a **single** bearing.
+
+**Turning it on:** below the map, switch on **Terrain estimate**. The first time, the app asks
+whether it may download elevation data (see Privacy in the README). Areas already downloaded
+are kept on the phone, so they work later without signal. You can change this with the
+**Download elevation data** switch.
+
+**What you'll see:**
+
+- With **one** bearing: an orange dot marked **Target (terrain)** and a dashed orange area
+  along the sightline. The results panel shows the coordinates (with **Copy**), the
+  distance, and the likely range (for example "2.1 km to 5.5 km").
+- With **several** bearings: a dashed area and a dot ("A ground", "B ground"…) on each
+  sightline, plus a line under each bearing in the list. If these land near the crossing
+  point, the bearings and the terrain agree. If not, be careful.
+
+**Camera tilt error (±0.5°, ±1°, ±2°):** how far off the phone's tilt reading might be. It sets
+the near and far ends of the dashed area. ±1° is a sensible start. Pick ±2° if the phone was
+moving or you weren't sure where the smoke met the ground.
+
+**When to trust it:**
+
+- **Good:** looking down from a hill, lookout or ridge at smoke in a valley or on lower ground.
+- **Rough:** from flat ground looking at something on flat ground far away. The line of sight
+  meets the land at a very shallow angle, so a tiny tilt error moves the point kilometres.
+  The app warns you when this happens, and the far end may say "beyond 40 km".
+- It uses the bare shape of the land. **Trees and buildings** aren't in the data, so if the
+  smoke rises from behind a forest, the real spot may be nearer than shown.
+- The data is about 30 m detailed in most places, and it goes out to 40 km.
+- Your eye height is taken as the ground height where you stood plus 1.5 m. If you were
+  up a tower or on a roof, the estimate will be too close.
+
+| Message | Meaning |
+| --- | --- |
+| Doesn't meet the ground within 40 km | The line of sight points level or upward. Maybe the tap was above the horizon, or the object is very far away. |
+| No elevation data saved for this area | Turn on **Download elevation data** (needs signal once). |
+| Couldn't get elevation data | No connection, or the download failed. Tap **Try the download again**. |
 
 ## Sensor check screen
 
@@ -251,5 +303,5 @@ Leaving the Sensors screen stops the test.
 
 The camera, GPS, sensors and map run only while the app is on screen. They stop as soon as you
 switch away. In car mode the gyroscope runs instead of the compass, not alongside it. Each saved photo is small (a few hundred KB). Deleting a session or bearing
-frees its photo's space straight away. Map images are kept to about 50 MB,
-and Android can clear them if the phone runs low on space.
+frees its photo's space straight away. Map images are kept to about 50 MB and
+elevation data to about 100 MB; Android can clear either if the phone runs low on space.

@@ -1,6 +1,7 @@
 package com.triangulation.locator.data
 
 import android.hardware.SensorManager
+import com.triangulation.locator.terrain.TerrainMath
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -39,6 +40,15 @@ object BearingMath {
         val horizontalForward = forward * cos(p) - up * sin(p)
         return Math.toDegrees(atan2(right, horizontalForward))
     }
+
+    /** Angle of a saved bearing's line of sight above the horizon (negative = looking down). */
+    fun elevationAngleDeg(obs: Observation): Double = TerrainMath.elevationAngleDeg(
+        obs.tapX,
+        obs.tapY,
+        obs.focalLengthFraction ?: fallbackFocalFraction(),
+        if (obs.photoWidth > 0) obs.photoHeight.toDouble() / obs.photoWidth else 4.0 / 3.0,
+        obs.pitchDeg,
+    )
 
     /** Starting error band from compass calibration. The user can change it before saving. */
     fun defaultErrorDeg(compassAccuracy: Int): Double = when (compassAccuracy) {

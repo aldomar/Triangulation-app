@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import com.triangulation.locator.data.Observation
 import com.triangulation.locator.export.ExportFormat
 import com.triangulation.locator.export.SessionExport
+import com.triangulation.locator.terrain.TerrainResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -34,12 +35,14 @@ import kotlinx.coroutines.withContext
  * anywhere unless the user picks a cloud location themselves. Needs no permissions.
  *
  * @param loadObservations the ticked bearings to export, oldest first.
+ * @param terrain terrain estimates for those bearings (same order), if shown on the map.
  */
 @Composable
 fun ExportButton(
     sessionName: String,
     loadObservations: suspend () -> List<Observation>,
     modifier: Modifier = Modifier,
+    terrain: List<TerrainResult>? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -54,7 +57,7 @@ fun ExportButton(
         if (uri == null || format == null) return@rememberLauncherForActivityResult
         scope.launch {
             try {
-                val text = SessionExport.build(format, sessionName, loadObservations(), System.currentTimeMillis())
+                val text = SessionExport.build(format, sessionName, loadObservations(), System.currentTimeMillis(), terrain)
                 withContext(Dispatchers.IO) {
                     context.contentResolver.openOutputStream(uri, "w")?.use { it.write(text.toByteArray(Charsets.UTF_8)) }
                         ?: error("No output stream for $uri")
@@ -79,7 +82,8 @@ fun ExportButton(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
                         "Saves the ticked bearings, their sightlines and the estimated location (with its " +
-                            "uncertainty area) as a file other map apps can open. Photos aren't included."
+                            "uncertainty area) as a file other map apps can open. Terrain estimates are included when " +
+                            "they are switched on. Photos aren't included."
                     )
                     Text("GeoJSON: for QGIS, geojson.io, Google Earth and most GIS tools.")
                     Text("GPX: for hiking and GPS apps such as OsmAnd, Gaia GPS or caltopo.")

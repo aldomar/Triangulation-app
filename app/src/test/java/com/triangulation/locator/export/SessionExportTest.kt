@@ -4,6 +4,9 @@ import com.triangulation.locator.data.Observation
 import com.triangulation.locator.solver.LatLon
 import com.triangulation.locator.solver.LocalProjection
 import com.triangulation.locator.solver.Vec
+import com.triangulation.locator.terrain.ElevationLookup
+import com.triangulation.locator.terrain.TerrainMath
+import com.triangulation.locator.terrain.TerrainResult
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -105,6 +108,27 @@ class SessionExportTest {
         assertTrue(gpx.contains("car mode at 72 km/h, lined up 45 s before"))
         // Compass bearings say so too.
         assertEquals(2, count(SessionExport.geoJson("x", twoBearings, time), "\"headingSource\":\"compass\""))
+    }
+
+    @Test
+    fun terrainEstimateIsExportedForOneBearing() {
+        val one = listOf(obs("a", west, 45.0, time))
+        val terrain = TerrainMath.estimate(west, 45.0, 3.0, -1.0, 0.5, ElevationLookup { 0.0 })
+        assertTrue(terrain is TerrainResult.Found)
+
+        val json = SessionExport.geoJson("x", one, time, listOf(terrain))
+        assertEquals(1, count(json, "\"kind\":\"terrainEstimate\""))
+        assertEquals(1, count(json, "\"kind\":\"terrainArea\""))
+        assertEquals(0, count(json, "\"kind\":\"estimate\""))
+
+        val gpx = SessionExport.gpx("x", one, time, listOf(terrain))
+        assertTrue(gpx.contains("<name>A terrain estimate</name>"))
+        assertTrue(gpx.contains("<name>A terrain area</name>"))
+        // GPX order: all waypoints before routes and tracks.
+        assertTrue(gpx.indexOf("A terrain estimate") < gpx.indexOf("<rte>"))
+
+        // Without terrain, nothing extra.
+        assertFalse(SessionExport.geoJson("x", one, time).contains("terrain"))
     }
 
     @Test
