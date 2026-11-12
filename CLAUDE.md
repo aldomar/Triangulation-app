@@ -42,13 +42,13 @@ Work one phase at a time; each must build and run on a real phone. Status:
   - `car/`: `CarMath.kt` car-mode line-up, error band, position extrapolation, driving-test stats; pure Kotlin (unit-tested)
   - `camera/`: CameraX photo capture and lens optics (focal length for tap offsets)
   - `data/`: `Observation` + `Session` Room entities, `Database.kt` (AppDatabase + DAO), `ObservationStore` (DB + JPEGs in app-private `filesDir/observations`), `BearingMath`, `Settings`
-  - `export/`: `SessionExport.kt` GeoJSON/GPX writers, pure Kotlin (unit-tested)
+  - `export/`: `SessionExport.kt` GeoJSON/GPX writers and `ShareText.kt` share message, pure Kotlin (unit-tested)
   - `solver/`: pure Kotlin (no Android imports) so it unit-tests on the JVM. `Geo.kt` local east/north
     projection; `Solver.kt` 2-line intersection + quadrilateral uncertainty, 3+ weighted least squares + covariance ellipse
   - `map/`: osmdroid setup (`MapSetup.kt`) and the custom dot overlay
   - `terrain/`: single-photo mode. `TerrainMath.kt` (line of sight to the ground) and `Terrarium.kt`
     (elevation tile maths) are pure Kotlin; `TerrainTiles.kt` downloads/caches tiles and runs estimates
-- Tests: `app/src/test/.../solver/SolverTest.kt`, `export/SessionExportTest.kt`, `car/CarMathTest.kt`, `terrain/TerrainMathTest.kt` (JUnit 4).
+- Tests: `app/src/test/.../solver/SolverTest.kt`, `export/SessionExportTest.kt`, `export/ShareTextTest.kt`, `car/CarMathTest.kt`, `terrain/TerrainMathTest.kt` (JUnit 4).
   - `ui/`: Compose screens (`CaptureScreen`, `SessionsScreen` = History, `SessionScreen`, `MapScreen`, `SensorTestScreen` incl. driving test), `ExportUi.kt`, `CarModeUi.kt`, shared bits in `Common.kt`; `ui/theme/` colours
 - Versions are in `gradle/libs.versions.toml` (AGP 9 with built-in Kotlin, Gradle 9).
   Android Studio 2026.2 runs Gradle on Java 25, so Gradle must stay at 9.1 or newer.
@@ -62,6 +62,8 @@ Work one phase at a time; each must build and run on a real phone. Status:
 - Storage is Room (sessions + observations). Schema changes need a proper `Migration`; never use destructive fallback. Room/KSP via KSP plugin (AGP 9 built-in Kotlin, no kapt).
 - Car mode: never use the compass inside a car; heading = gyroscope (game rotation vector) + line-up offset from GPS course. Passenger-only warnings must stay.
 - Export uses SAF `CreateDocument` only (user picks the location); the app itself never uploads exports.
+- Share (map screen) hands plain text to `ACTION_SEND` via the chooser, and "Open in map app" uses a `geo:` intent.
+  Both start only from a user tap. Shared text has the estimate only, never observer positions (`export/ShareText.kt`, unit-tested).
 - The user builds and runs the app in Android Studio; don't run Gradle builds without asking.
 - GPS uses `GPS_PROVIDER` only. The network provider can send Wi-Fi/cell data to outside services.
 - `INTERNET` is used only for OpenStreetMap tiles and elevation tiles (terrain estimate), each opt-in.

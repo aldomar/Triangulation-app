@@ -32,6 +32,8 @@ Where those lines of sight cross is roughly where the object is.
   ground. With several bearings it's a useful cross-check.
 - **Export:** save a session as a **GeoJSON** or **GPX** file to open in other map apps
   (QGIS, Google Earth, OsmAnd, caltopo…). You choose where the file goes.
+- **Share the result:** send the estimated location, how sure it is, the time and an
+  OpenStreetMap link to any app you choose (messages, email…), or open it in another map app.
 - **Sensor check:** a live readout of GPS accuracy, compass heading, tilt and compass calibration.
 
 Sharing sessions between phones over a private network (Tailscale) is planned but on hold;
@@ -51,6 +53,8 @@ see `docs/PHASE5-PLAN.md`.
   Your bearings, photos and GPS position are never sent. With both off, the app makes no
   internet connections at all.
 - **Export** writes a file only where you choose. The app never sends it anywhere itself.
+- **Share** hands a short text to the app you pick. It contains the estimated location only,
+  not where you stood. The app never sends it anywhere by itself.
 - No ads, no tracking, no accounts. Everything used to build it is free.
 
 ## Guides

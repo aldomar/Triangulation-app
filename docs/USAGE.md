@@ -163,7 +163,7 @@ Change your mind any time with the **Map background** switch at the top of the m
 
 | Item | Meaning |
 | --- | --- |
-| Estimated location | Latitude and longitude of the object. Tap **Copy** to paste them into a message or another map app, or **Export…** to save a file. |
+| Estimated location | Latitude and longitude of the object. Tap **Copy** to copy just the numbers, **Share** to send a short message (location, how sure it is, time and an OpenStreetMap link) with any app you choose, **Open in map app** to show it in another map app, or **Export…** to save a file. Shared text never includes where you stood. |
 | Uncertainty | The object is probably within this distance of the estimated location. |
 | Best crossing angle | The widest angle between any two sightlines. Above 30° is good, and close to 90° is best. |
 | Lines miss the point by | With 3 or more bearings: how closely they agree. Small numbers mean they agree well. |
@@ -200,7 +200,7 @@ are kept on the phone, so they work later without signal. You can change this wi
 **What you'll see:**
 
 - With **one** bearing: an orange dot marked **Target (terrain)** and a dashed orange area
-  along the sightline. The results panel shows the coordinates (with **Copy**), the
+  along the sightline. The results panel shows the coordinates (with **Copy** and **Share**), the
   distance, and the likely range (for example "2.1 km to 5.5 km").
 - With **several** bearings: a dashed area and a dot ("A ground", "B ground"…) on each
   sightline, plus a line under each bearing in the list. If these land near the crossing
