@@ -34,7 +34,7 @@ _Last updated: 2026-11-12_
    Built and checked on the phone. PR #11 → `compass-interference`.
 4. **Landmark check** (`landmark-check`): take a bearing of a known point and record the compass
    error. **Measure and record only** (owner's choice); no automatic correction yet. DB v5.
-   Built and flow-tested on the phone (indoors); unit tests pass. PR → `typed-bearing`.
+   Built and flow-tested on the phone (indoors); unit tests pass. PR #12 → `typed-bearing`.
    Starts from the Sensors screen; reuses `CaptureScreen` in check mode (`CheckTarget`) and
    `PointPicker`. Pure maths in `solver/LandmarkCheck.kt` and great-circle helpers in `Geo.kt`.
    **Next step after this:** use landmark checks outdoors to decide whether automatic correction
