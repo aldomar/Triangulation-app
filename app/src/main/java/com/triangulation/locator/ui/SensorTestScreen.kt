@@ -1,20 +1,25 @@
 package com.triangulation.locator.ui
 
 import android.Manifest
-import android.annotation.SuppressLint
-import android.content.Context
-import android.content.Intent
-import android.content.pm.PackageManager
-import android.hardware.GeomagneticField
 import android.hardware.SensorManager
 import android.location.Location
-import android.location.LocationManager
 import android.os.SystemClock
-import android.provider.Settings
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import android.widget.Toast
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.triangulation.locator.car.CarMath
+import com.triangulation.locator.car.ErrorStats
+import com.triangulation.locator.car.LineUp
+import com.triangulation.locator.sensors.GyroState
+import com.triangulation.locator.sensors.hasGyroHeading
+import com.triangulation.locator.sensors.wrap180
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,7 +27,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
@@ -30,76 +34,40 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.compose.LifecycleResumeEffect
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.triangulation.locator.sensors.GpsState
 import com.triangulation.locator.sensors.OrientationState
-import com.triangulation.locator.sensors.gpsUpdates
 import com.triangulation.locator.sensors.normalize360
-import com.triangulation.locator.sensors.orientationUpdates
 import com.triangulation.locator.ui.theme.StatusColors
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.flowOf
 import java.text.DateFormat
 import java.util.Date
-import java.util.Locale
 import kotlin.math.abs
 
-/** Phase 1: live readout of GPS, true heading, tilt and compass calibration. */
-@SuppressLint("MissingPermission") // GPS is only started after hasFineLocation is true.
+/** Live readout of GPS, true heading, tilt and compass calibration. */
 @Composable
-fun SensorTestScreen() {
+fun SensorTestScreen(onBack: (() -> Unit)? = null) {
     val context = LocalContext.current
-    val locationManager = remember { context.getSystemService(LocationManager::class.java) }
-    val sensorManager = remember { context.getSystemService(SensorManager::class.java) }
+    val permissions = rememberGrantedPermissions(*LOCATION_PERMISSIONS)
+    val hasFineLocation = permissions[Manifest.permission.ACCESS_FINE_LOCATION]
+    val hasCoarseLocation = permissions[Manifest.permission.ACCESS_COARSE_LOCATION]
 
-    var hasFineLocation by remember { mutableStateOf(context.hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)) }
-    var hasCoarseLocation by remember { mutableStateOf(context.hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)) }
-    // Re-check when returning from the system Settings app.
-    LifecycleResumeEffect(Unit) {
-        hasFineLocation = context.hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-        hasCoarseLocation = context.hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
-        onPauseOrDispose { }
-    }
-    val permissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestMultiplePermissions()
-    ) {
-        hasFineLocation = context.hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
-        hasCoarseLocation = context.hasPermission(Manifest.permission.ACCESS_COARSE_LOCATION)
-    }
-
-    // Sensors run only while this screen is visible (collectAsStateWithLifecycle stops them
-    // when the app goes to the background), which keeps battery use low.
-    val orientationFlow = remember { sensorManager.orientationUpdates() }
-    val orientation by orientationFlow.collectAsStateWithLifecycle(OrientationState.Waiting)
-    val gpsFlow = remember(hasFineLocation) {
-        if (hasFineLocation) locationManager.gpsUpdates() else flowOf(null)
-    }
-    val gps by gpsFlow.collectAsStateWithLifecycle(null)
-
+    val orientation by rememberOrientationState()
+    val gps by rememberGpsState(enabled = hasFineLocation)
     val location = gps?.location
     val declination = remember(location) { location?.declinationDeg() }
 
@@ -111,7 +79,7 @@ fun SensorTestScreen() {
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Sensor check", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
+            ScreenHeader("Sensor check", onBack)
             Text(
                 "Make sure GPS and the compass are working before taking bearings. Best results outdoors, away from cars and metal.",
                 style = MaterialTheme.typography.bodyMedium,
@@ -119,27 +87,22 @@ fun SensorTestScreen() {
             )
 
             if (!hasFineLocation) {
-                PermissionCard(
+                LocationPermissionCard(
                     approximateOnly = hasCoarseLocation,
-                    onRequest = {
-                        permissionLauncher.launch(
-                            arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
-                        )
-                    },
+                    onRequest = permissions.request,
                     onOpenSettings = { context.openAppSettings() },
                 )
             } else {
-                GpsCard(gps, onOpenLocationSettings = {
-                    context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
-                })
+                GpsCard(gps, onOpenLocationSettings = { context.openLocationSettings() })
             }
 
             HeadingCard(orientation, declination)
             CompassAccuracyCard(orientation)
             TiltCard(orientation)
+            DrivingTestCard(orientation, declination, location)
 
             Text(
-                "Nothing leaves this phone. The app has no internet permission.",
+                "Your position and bearings never leave this phone.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -147,10 +110,8 @@ fun SensorTestScreen() {
     }
 }
 
-// ---------- Cards ----------
-
 @Composable
-private fun PermissionCard(approximateOnly: Boolean, onRequest: () -> Unit, onOpenSettings: () -> Unit) {
+fun LocationPermissionCard(approximateOnly: Boolean, onRequest: () -> Unit, onOpenSettings: () -> Unit) {
     InfoCard("Location") {
         Text(
             if (approximateOnly) {
@@ -193,11 +154,11 @@ private fun GpsDetails(gps: GpsState) {
         if (location == null) {
             Text("Waiting for a GPS fix… Go outside with a clear view of the sky. The first fix can take a minute.")
         } else {
-            val accuracy = if (location.hasAccuracy()) location.accuracy else null
+            val accuracy = if (location.hasAccuracy()) location.accuracy.toDouble() else null
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Accuracy", Modifier.weight(1f))
                 if (accuracy != null) {
-                    StatusBadge("±${fmt(accuracy.toDouble(), 0)} m", gpsAccuracyColor(accuracy))
+                    StatusBadge("±${fmt(accuracy, 0)} m", gpsAccuracyColor(accuracy))
                 } else {
                     Text("unknown")
                 }
@@ -208,10 +169,10 @@ private fun GpsDetails(gps: GpsState) {
             ValueRow(
                 "Last fix",
                 DateFormat.getTimeInstance(DateFormat.MEDIUM).format(Date(location.time)) +
-                    (ageSeconds?.let { " (${it} s ago)" } ?: ""),
+                    (ageSeconds?.let { " ($it s ago)" } ?: ""),
             )
             if (ageSeconds != null && ageSeconds > 10) {
-                Warning("This position is old. Waiting for a fresh fix.")
+                WarningText("This position is old. Waiting for a fresh fix.")
             }
         }
         ValueRow("Satellites used / seen", "${gps.satellitesUsed} / ${gps.satellitesInView}")
@@ -251,10 +212,10 @@ private fun HeadingCard(orientation: OrientationState, declination: Double?) {
                 )
                 orientation.headingErrorDeg?.let { ValueRow("Sensor's own error estimate", "±${fmt(it, 0)}°") }
                 if (declination == null) {
-                    Warning("Showing magnetic heading. True north correction starts once GPS has a fix.")
+                    WarningText("Showing magnetic heading. True north correction starts once GPS has a fix.")
                 }
                 if (abs(orientation.pitchDeg) > 60) {
-                    Warning("Hold the phone upright, with the back camera pointing at the object. Heading is unreliable when the phone is flat.")
+                    WarningText("Hold the phone upright, with the back camera pointing at the object. Heading is unreliable when the phone is flat.")
                 }
             }
         }
@@ -264,12 +225,7 @@ private fun HeadingCard(orientation: OrientationState, declination: Double?) {
 @Composable
 private fun CompassAccuracyCard(orientation: OrientationState) {
     if (orientation !is OrientationState.Reading) return
-    val (label, color) = when (orientation.accuracy) {
-        SensorManager.SENSOR_STATUS_ACCURACY_HIGH -> "High" to StatusColors.Good
-        SensorManager.SENSOR_STATUS_ACCURACY_MEDIUM -> "Medium" to StatusColors.Fair
-        SensorManager.SENSOR_STATUS_ACCURACY_LOW -> "Low" to StatusColors.Poor
-        else -> "Unreliable" to StatusColors.Bad
-    }
+    val (label, color) = compassAccuracyLabel(orientation.accuracy)
     InfoCard("Compass calibration") {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Status", Modifier.weight(1f))
@@ -277,14 +233,14 @@ private fun CompassAccuracyCard(orientation: OrientationState) {
         }
         if (orientation.accuracy != SensorManager.SENSOR_STATUS_ACCURACY_HIGH) {
             Spacer(Modifier.height(8.dp))
-            Text(
-                "To calibrate: move away from cars, metal and power lines, then slowly wave the phone " +
-                    "in a figure-8 shape 3–4 times, turning it as you go.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
+            Text(CALIBRATION_TIP, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }
+
+const val CALIBRATION_TIP =
+    "To calibrate: move away from cars, metal and power lines, then slowly wave the phone " +
+        "in a figure-8 shape 3–4 times, turning it as you go."
 
 @Composable
 private fun TiltCard(orientation: OrientationState) {
@@ -305,44 +261,6 @@ private fun TiltCard(orientation: OrientationState) {
             LevelIndicator(orientation.pitchDeg, orientation.rollDeg)
         }
     }
-}
-
-// ---------- Small building blocks ----------
-
-@Composable
-private fun InfoCard(title: String, content: @Composable () -> Unit) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.height(4.dp))
-            content()
-        }
-    }
-}
-
-@Composable
-private fun ValueRow(label: String, value: String) {
-    Row(Modifier.fillMaxWidth()) {
-        Text(label, Modifier.weight(1f), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text(value, fontWeight = FontWeight.Medium)
-    }
-}
-
-@Composable
-private fun StatusBadge(text: String, color: Color) {
-    Text(
-        text,
-        color = Color.White,
-        fontWeight = FontWeight.SemiBold,
-        modifier = Modifier
-            .background(color, RoundedCornerShape(50))
-            .padding(horizontal = 12.dp, vertical = 4.dp),
-    )
-}
-
-@Composable
-private fun Warning(text: String) {
-    Text(text, color = StatusColors.Poor, style = MaterialTheme.typography.bodyMedium)
 }
 
 /** Artificial horizon: the line stays level with the real horizon as the phone tilts. */
@@ -373,56 +291,143 @@ private fun LevelIndicator(pitchDeg: Double, rollDeg: Double) {
     }
 }
 
-/** Current elapsed-realtime clock, ticking once a second, for "x s ago" labels. */
+// ---------- Driving test ----------
+
+/**
+ * Measures, in a moving car, how far the compass and the lined-up gyroscope are from the GPS
+ * direction of travel. The phone must face straight ahead along the car the whole time.
+ * The gyroscope runs only after "Start driving test".
+ */
 @Composable
-private fun rememberNowTicker(): Long {
-    val now by produceState(SystemClock.elapsedRealtimeNanos()) {
-        while (true) {
-            delay(1_000)
-            value = SystemClock.elapsedRealtimeNanos()
+private fun DrivingTestCard(orientation: OrientationState, declination: Double?, location: Location?) {
+    val context = LocalContext.current
+    val hasGyro = remember { context.getSystemService(SensorManager::class.java).hasGyroHeading() }
+    var running by remember { mutableStateOf(false) }
+
+    InfoCard("Driving test (passenger only)") {
+        if (!hasGyro) {
+            Text("This phone has no gyroscope, so car mode isn't available on it.")
+        } else if (!running) {
+            Text(
+                "Checks how well bearings can be taken from a moving car. A passenger holds the phone " +
+                    "upright and steady, facing straight ahead along the car (a dashboard mount is best). " +
+                    "On a straight road tap Line up, then drive normally for 10–15 minutes."
+            )
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = { running = true }) { Text("Start driving test") }
+        } else {
+            DrivingTestBody(orientation, declination, location, onStop = { running = false })
         }
     }
-    return now
 }
 
-// ---------- Helpers ----------
+@Composable
+private fun DrivingTestBody(
+    orientation: OrientationState,
+    declination: Double?,
+    location: Location?,
+    onStop: () -> Unit,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val gyroFlow = rememberSharedGyroFlow()
+    val gyro by gyroFlow.collectAsStateWithLifecycle(GyroState.Waiting)
+    val fixes = rememberCourseFixes(location)
+    val now = rememberNowTicker()
 
-private fun Context.hasPermission(permission: String) =
-    ContextCompat.checkSelfPermission(this, permission) == PackageManager.PERMISSION_GRANTED
+    var lineUp by remember { mutableStateOf<LineUp?>(null) }
+    var lining by remember { mutableStateOf(false) }
+    var compassStats by remember { mutableStateOf(ErrorStats()) }
+    var gyroStats by remember { mutableStateOf(ErrorStats()) }
 
-private fun Context.openAppSettings() {
-    startActivity(
-        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
-            .setData(android.net.Uri.fromParts("package", packageName, null))
+    val reading = gyro as? GyroState.Reading
+    val validLineUp = lineUp?.takeIf { reading != null && it.runId == reading.runId }
+    val compassTrue = (orientation as? OrientationState.Reading)?.let { o ->
+        declination?.let { normalize360(o.magneticHeadingDeg + it) }
+    }
+    val gyroTrue = if (reading != null && validLineUp != null) CarMath.trueHeading(reading.relativeHeadingDeg, validLineUp) else null
+    val lastFix = fixes.lastOrNull()
+    val problem = CarMath.courseProblem(fixes.toList(), now, CarMath.MIN_TEST_SPEED_MPS)
+
+    // One sample per new GPS fix, only while driving straight above 20 km/h.
+    LaunchedEffect(lastFix) {
+        val fix = lastFix ?: return@LaunchedEffect
+        if (CarMath.courseProblem(fixes.toList(), SystemClock.elapsedRealtimeNanos(), CarMath.MIN_TEST_SPEED_MPS) != null) {
+            return@LaunchedEffect
+        }
+        compassTrue?.let { compassStats += it - fix.courseDeg }
+        gyroTrue?.let { gyroStats += it - fix.courseDeg }
+    }
+
+    ValueRow("Speed", lastFix?.let { "${(it.speedMps * 3.6).roundToInt()} km/h" } ?: "—")
+    ValueRow(
+        "GPS direction of travel",
+        lastFix?.let { f -> "${fmt(f.courseDeg, 1)}°" + (f.courseAccuracyDeg?.let { " ±${fmt(it, 1)}°" } ?: "") } ?: "—",
+    )
+    if (problem != null) {
+        Text(
+            courseProblemText(problem, CarMath.MIN_TEST_SPEED_MPS) + " (Not counting.)",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    ValueRow(
+        "Compass heading",
+        when {
+            compassTrue == null -> "waiting…"
+            lastFix != null && problem == null -> "${fmt(compassTrue, 1)}°  (off by ${signed(wrap180(compassTrue - lastFix.courseDeg))}°)"
+            else -> "${fmt(compassTrue, 1)}°"
+        },
+    )
+    ValueRow(
+        "Gyroscope heading",
+        when {
+            reading == null -> "starting…"
+            gyroTrue == null -> if (lineUp != null) "line up again" else "tap Line up"
+            lastFix != null && problem == null -> "${fmt(gyroTrue, 1)}°  (off by ${signed(wrap180(gyroTrue - lastFix.courseDeg))}°)"
+            else -> "${fmt(gyroTrue, 1)}°"
+        },
+    )
+    validLineUp?.let { ValueRow("Lined up", "${minutesSeconds(it.ageSeconds(now))} ago") }
+
+    Spacer(Modifier.height(4.dp))
+    Text("Compass error", fontWeight = FontWeight.SemiBold)
+    Text(statsText(compassStats), style = MaterialTheme.typography.bodyMedium)
+    Text("Gyroscope error (since last line-up)", fontWeight = FontWeight.SemiBold)
+    Text(statsText(gyroStats), style = MaterialTheme.typography.bodyMedium)
+
+    Spacer(Modifier.height(8.dp))
+    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Button(
+            enabled = reading != null && !lining,
+            onClick = {
+                lining = true
+                scope.launch {
+                    when (val r = performLineUp(gyroFlow) { fixes.toList() }) {
+                        is LineUpResult.Done -> {
+                            lineUp = r.lineUp
+                            gyroStats = ErrorStats()
+                            Toast.makeText(context, "Lined up", Toast.LENGTH_SHORT).show()
+                        }
+                        is LineUpResult.Failed -> Toast.makeText(context, r.message, Toast.LENGTH_LONG).show()
+                    }
+                    lining = false
+                }
+            },
+        ) { Text(if (lining) "Hold still…" else "Line up") }
+        OutlinedButton(onClick = { compassStats = ErrorStats(); gyroStats = ErrorStats() }) { Text("Reset") }
+        OutlinedButton(onClick = onStop) { Text("Stop") }
+    }
+    Text(
+        "Note the gyroscope error after about 2, 5 and 10 minutes. Leaving this screen stops the test " +
+            "and you'll need to line up again.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
 }
 
-/** Magnetic declination at this position: add it to a magnetic heading to get true heading. */
-private fun Location.declinationDeg(): Double =
-    GeomagneticField(
-        latitude.toFloat(),
-        longitude.toFloat(),
-        if (hasAltitude()) altitude.toFloat() else 0f,
-        System.currentTimeMillis(),
-    ).declination.toDouble()
-
-private fun Location.ageSeconds(nowElapsedNanos: Long): Long =
-    ((nowElapsedNanos - elapsedRealtimeNanos) / 1_000_000_000L).coerceAtLeast(0)
-
-private fun gpsAccuracyColor(meters: Float): Color = when {
-    meters <= 10f -> StatusColors.Good
-    meters <= 25f -> StatusColors.Fair
-    meters <= 50f -> StatusColors.Poor
-    else -> StatusColors.Bad
+private fun statsText(s: ErrorStats): String {
+    val mean = s.meanDeg ?: return "No samples yet. Counts only above 20 km/h on straight roads."
+    return "Average ${signed(mean)}°, spread ±${fmt(s.spreadDeg ?: 0.0, 1)}°, worst ${fmt(s.worstDeg, 0)}°, " +
+        "now ${s.lastDeg?.let { signed(it) } ?: "—"}° (${s.count} samples)"
 }
-
-private val CARDINALS = arrayOf(
-    "N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
-    "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW",
-)
-
-private fun cardinal(deg: Double): String = CARDINALS[((normalize360(deg) + 11.25) / 22.5).toInt() % 16]
-
-private fun fmt(value: Double, decimals: Int): String = String.format(Locale.US, "%.${decimals}f", value)
-
-private fun signed(value: Double): String = String.format(Locale.US, "%+.1f", value)

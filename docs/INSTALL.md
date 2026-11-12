@@ -36,6 +36,32 @@ When the sync finishes, the green ▶ (Run) button at the top becomes active.
 2. Click ▶ **Run**. The app is built, installed and opened on your phone.
 3. The app is now in your phone's app list as **Triangulation Locator**. You can unplug the phone.
 
+## Getting updates
+
+When the code changes (for example, after a new phase is added):
+
+1. In Android Studio, if a bar says **"Gradle files have changed"**, click **Sync Now**.
+2. Click ▶ **Run** again. Only changed parts are rebuilt, so this is much quicker than the first time.
+   Your saved bearings are kept.
+
+   *Version 0.4 note:* the first build after this update downloads a few extra free build tools
+   (Room and KSP, which handle the app's database), so it takes a little longer. When the
+   updated app first opens, it moves bearings saved by older versions into a session called
+   **Earlier bearings**.
+
+Small changes to code can also be sent to a running app with **Apply Changes** (the ⚡ buttons
+next to Run). New permissions or libraries always need a full ▶ Run.
+
+## Checking the maths (optional)
+
+The project includes automatic tests for the triangulation calculations, the terrain (single-photo)
+estimate and the export files. They run on the
+computer, so no phone is needed:
+
+1. In the **Project** panel on the left, open `app → src → test`.
+2. Right-click the `java` folder and choose **Run 'Tests in 'java''**.
+3. A panel opens at the bottom. Green ticks mean the maths is working correctly.
+
 ## Sharing the app with other phones (optional)
 
 To make an installable file (APK) for other people:

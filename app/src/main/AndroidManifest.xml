@@ -1,11 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Location is used only on the phone. This app has no INTERNET permission,
-         so it cannot send anything anywhere. -->
+    <!-- Location is used only on the phone and is never sent anywhere. -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
+    <!-- Photos are kept in the app's private storage, never in the Gallery. -->
+    <uses-permission android:name="android.permission.CAMERA" />
+
+    <!-- Internet is used ONLY to download OpenStreetMap map images and elevation data for
+         terrain estimates, each only after the user turns it on. No other network traffic,
+         analytics or tracking. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Required by the map library to check for a connection before downloading. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <uses-feature android:name="android.hardware.camera.any" android:required="false" />
     <uses-feature android:name="android.hardware.location.gps" android:required="false" />
     <uses-feature android:name="android.hardware.sensor.compass" android:required="false" />
 
