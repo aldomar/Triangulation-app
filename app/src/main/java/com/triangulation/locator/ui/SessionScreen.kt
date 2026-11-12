@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.triangulation.locator.data.BearingMath
 import com.triangulation.locator.data.Observation
 import com.triangulation.locator.data.ObservationStore
 import com.triangulation.locator.data.Session
@@ -140,7 +141,8 @@ fun SessionScreen(
                         item {
                             Text(
                                 "${list.size} bearings. Ticked ones are used on the map and in exports. " +
-                                    "Best results: places far apart, with sightlines crossing at a wide angle.",
+                                    "Best results: places far apart, with sightlines crossing at a wide angle. One bearing can " +
+                                    "also be placed using the shape of the land (Terrain estimate on the map).",
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
@@ -157,14 +159,18 @@ fun SessionScreen(
                     }
                     Button(
                         onClick = onShowMap,
-                        enabled = included >= 2,
+                        enabled = included >= 1,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(16.dp)
                             .height(52.dp),
                     ) {
                         Text(
-                            if (included >= 2) "Show $included bearings on map" else "Tick at least 2 bearings",
+                            when {
+                                included >= 2 -> "Show $included bearings on map"
+                                included == 1 -> "Show 1 bearing on map"
+                                else -> "Tick bearings to show on the map"
+                            },
                             style = MaterialTheme.typography.titleMedium,
                         )
                     }
@@ -259,6 +265,11 @@ private fun ObservationRow(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
+                Text(
+                    lookAngleText(BearingMath.elevationAngleDeg(obs)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
                 if (obs.headingFromCar) {
                     Text(
                         "Car mode" +
@@ -326,4 +337,11 @@ private fun ConfirmDialog(text: String, onConfirm: () -> Unit, onDismiss: () -> 
         confirmButton = { TextButton(onClick = onConfirm) { Text("Delete") } },
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
     )
+}
+
+/** "Looking 1.2° down" / "Looking 0.5° up" / "Looking level" for a line-of-sight angle. */
+fun lookAngleText(angleDeg: Double): String = when {
+    angleDeg <= -0.05 -> "Looking ${fmt(-angleDeg, 1)}° down"
+    angleDeg >= 0.05 -> "Looking ${fmt(angleDeg, 1)}° up"
+    else -> "Looking level"
 }

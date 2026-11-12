@@ -54,7 +54,8 @@ next to Run). New permissions or libraries always need a full ▶ Run.
 
 ## Checking the maths (optional)
 
-The project includes automatic tests for the triangulation calculations and the export files. They run on the
+The project includes automatic tests for the triangulation calculations, the terrain (single-photo)
+estimate and the export files. They run on the
 computer, so no phone is needed:
 
 1. In the **Project** panel on the left, open `app → src → test`.

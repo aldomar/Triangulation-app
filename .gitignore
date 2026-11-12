@@ -7,6 +7,8 @@ build/
 .cxx/
 *.apk
 *.aab
+# Release build output (APK, R8 mapping)
+/app/release/
 
 # Android Studio / IntelliJ
 .idea/

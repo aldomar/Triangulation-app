@@ -8,6 +8,7 @@ import com.triangulation.locator.solver.SolveWarning
 import com.triangulation.locator.solver.Sightline
 import com.triangulation.locator.solver.Solver
 import com.triangulation.locator.solver.Vec
+import com.triangulation.locator.terrain.TerrainResult
 import java.math.BigDecimal
 import java.math.RoundingMode
 import java.time.Instant
@@ -27,11 +28,20 @@ enum class ExportFormat(val label: String, val extension: String) {
  */
 object SessionExport {
 
-    /** [observations] should be oldest first: they are labelled A, B, C… in that order. */
-    fun build(format: ExportFormat, sessionName: String, observations: List<Observation>, exportedAtMillis: Long): String =
+    /**
+     * [observations] should be oldest first: they are labelled A, B, C… in that order.
+     * [terrain], if given, holds each bearing's terrain (single-photo) estimate in the same order.
+     */
+    fun build(
+        format: ExportFormat,
+        sessionName: String,
+        observations: List<Observation>,
+        exportedAtMillis: Long,
+        terrain: List<TerrainResult>? = null,
+    ): String =
         when (format) {
-            ExportFormat.GeoJson -> geoJson(sessionName, observations, exportedAtMillis)
-            ExportFormat.Gpx -> gpx(sessionName, observations, exportedAtMillis)
+            ExportFormat.GeoJson -> geoJson(sessionName, observations, exportedAtMillis, terrain)
+            ExportFormat.Gpx -> gpx(sessionName, observations, exportedAtMillis, terrain)
         }
 
     /** A safe file name for the export, e.g. "Smoke north of town.geojson". */
@@ -47,20 +57,26 @@ object SessionExport {
         val result: SolveResult,
         /** Start and end of each sightline, in the same order as [observations]. */
         val sightlines: List<Pair<LatLon, LatLon>>,
+        /** Terrain estimates found, with the index of their bearing. */
+        val terrain: List<Pair<Int, TerrainResult.Found>>,
     ) {
         val fix get() = result as? SolveResult.Fix
     }
 
-    private fun solve(observations: List<Observation>): Solved {
+    private fun solve(observations: List<Observation>, terrain: List<TerrainResult>?): Solved {
         val lines = observations.map { Sightline(LatLon(it.latitude, it.longitude), it.bearingDeg, it.errorDeg) }
         val result = Solver.solve(lines)
-        if (lines.isEmpty()) return Solved(observations, result, emptyList())
+        val found = terrain.orEmpty().take(observations.size).withIndex()
+            .mapNotNull { (i, r) -> (r as? TerrainResult.Found)?.let { i to it } }
+        if (lines.isEmpty()) return Solved(observations, result, emptyList(), found)
         val proj = LocalProjection.around(lines.map { it.position })
         val sightlines = lines.mapIndexed { i, line ->
-            val end = proj.toVec(line.position) + Vec.ofBearing(line.bearingDeg) * Solver.drawLengthM(result, i)
+            val terrainReach = found.firstOrNull { it.first == i }?.second?.let { (it.farM ?: it.maxRangeM) * 1.1 } ?: 0.0
+            val length = maxOf(Solver.drawLengthM(result, i), terrainReach)
+            val end = proj.toVec(line.position) + Vec.ofBearing(line.bearingDeg) * length
             line.position to proj.toLatLon(end)
         }
-        return Solved(observations, result, sightlines)
+        return Solved(observations, result, sightlines, found)
     }
 
     fun label(index: Int): String = ('A' + index).toString()
@@ -129,8 +145,8 @@ object SessionExport {
     private fun feature(geometry: String, properties: String) =
         """{"type":"Feature","geometry":$geometry,"properties":$properties}"""
 
-    fun geoJson(sessionName: String, observations: List<Observation>, exportedAtMillis: Long): String {
-        val s = solve(observations)
+    fun geoJson(sessionName: String, observations: List<Observation>, exportedAtMillis: Long, terrain: List<TerrainResult>? = null): String {
+        val s = solve(observations, terrain)
         val features = mutableListOf<String>()
 
         s.observations.forEachIndexed { i, o ->
@@ -185,6 +201,27 @@ object SessionExport {
             }
         }
 
+        s.terrain.forEach { (i, t) ->
+            features += feature(
+                """{"type":"Point","coordinates":${position(t.point)}}""",
+                jsonObject(
+                    "kind" to "terrainEstimate",
+                    "label" to "${label(i)} terrain estimate",
+                    "distanceM" to number(t.distanceM, 0),
+                    "nearM" to number(t.nearM, 0),
+                    "farM" to number(t.farM, 0),
+                    "groundElevationM" to number(t.targetElevM, 0),
+                    "observerGroundElevationM" to number(t.observerGroundM, 0),
+                    "lineOfSightAngleDeg" to number(t.elevationAngleDeg, 2),
+                    "tiltErrorDeg" to number(t.tiltErrorDeg, 1),
+                ),
+            )
+            features += feature(
+                """{"type":"Polygon","coordinates":[[${counterClockwise(t.outline).let { it + it.first() }.joinToString(",") { position(it) }}]]}""",
+                jsonObject("kind" to "terrainArea", "label" to "${label(i)} terrain area"),
+            )
+        }
+
         val meta = jsonObject(
             "name" to sessionName,
             "exportedAt" to iso(exportedAtMillis),
@@ -224,8 +261,8 @@ object SessionExport {
 
     private fun latLonAttrs(p: LatLon) = """lat="${coord(p.lat)}" lon="${coord(p.lon)}""""
 
-    fun gpx(sessionName: String, observations: List<Observation>, exportedAtMillis: Long): String {
-        val s = solve(observations)
+    fun gpx(sessionName: String, observations: List<Observation>, exportedAtMillis: Long, terrain: List<TerrainResult>? = null): String {
+        val s = solve(observations, terrain)
         val fix = s.fix
         return buildString {
             append("""<?xml version="1.0" encoding="UTF-8"?>""").append('\n')
@@ -261,6 +298,15 @@ object SessionExport {
                 }
                 append("  <wpt ${latLonAttrs(fix.point)}><name>Estimated location</name><desc>${xml(desc)}</desc></wpt>\n")
             }
+            // GPX wants all waypoints before routes and tracks.
+            s.terrain.forEach { (i, t) ->
+                val desc = "Terrain estimate from bearing ${label(i)}: about ${num(t.distanceM, 0)} m away " +
+                    "(${num(t.nearM, 0)} to ${t.farM?.let { "${num(it, 0)} m" } ?: "beyond ${num(t.maxRangeM, 0)} m"}), " +
+                    "camera tilt ±${num(t.tiltErrorDeg, 1)}°."
+                append("  <wpt ${latLonAttrs(t.point)}>")
+                num(t.targetElevM, 0)?.let { append("<ele>$it</ele>") }
+                append("<name>${label(i)} terrain estimate</name><desc>${xml(desc)}</desc></wpt>\n")
+            }
 
             // Routes: one straight sightline per observer.
             s.sightlines.forEachIndexed { i, (start, end) ->
@@ -272,6 +318,11 @@ object SessionExport {
             fix?.uncertaintyOutline?.takeIf { it.size >= 3 }?.let { outline ->
                 append("  <trk><name>Uncertainty area</name><trkseg>")
                 (outline + outline.first()).forEach { append("<trkpt ${latLonAttrs(it)}/>") }
+                append("</trkseg></trk>\n")
+            }
+            s.terrain.forEach { (i, t) ->
+                append("  <trk><name>${label(i)} terrain area</name><trkseg>")
+                (t.outline + t.outline.first()).forEach { append("<trkpt ${latLonAttrs(it)}/>") }
                 append("</trkseg></trk>\n")
             }
             append("</gpx>\n")

@@ -32,7 +32,7 @@ Work one phase at a time; each must build and run on a real phone. Status:
 - [x] Phase 3: Solve and map (includes the 3+ bearing least-squares fit, pulled forward from Phase 4)
 - [x] Phase 4: History (Room sessions) and GPX/GeoJSON export
 - [ ] Phase 4b: Car mode + driving test (built before Phase 5 at the owner's request)
-- [ ] Phase 5: Tailnet sharing
+- [ ] Phase 5: Tailnet sharing (on hold; plan in `docs/PHASE5-PLAN.md`)
 - [ ] Phase 6: Single-photo mode
 
 ## Layout
@@ -46,7 +46,9 @@ Work one phase at a time; each must build and run on a real phone. Status:
   - `solver/`: pure Kotlin (no Android imports) so it unit-tests on the JVM. `Geo.kt` local east/north
     projection; `Solver.kt` 2-line intersection + quadrilateral uncertainty, 3+ weighted least squares + covariance ellipse
   - `map/`: osmdroid setup (`MapSetup.kt`) and the custom dot overlay
-- Tests: `app/src/test/.../solver/SolverTest.kt`, `export/SessionExportTest.kt`, `car/CarMathTest.kt` (JUnit 4).
+  - `terrain/`: single-photo mode. `TerrainMath.kt` (line of sight to the ground) and `Terrarium.kt`
+    (elevation tile maths) are pure Kotlin; `TerrainTiles.kt` downloads/caches tiles and runs estimates
+- Tests: `app/src/test/.../solver/SolverTest.kt`, `export/SessionExportTest.kt`, `car/CarMathTest.kt`, `terrain/TerrainMathTest.kt` (JUnit 4).
   - `ui/`: Compose screens (`CaptureScreen`, `SessionsScreen` = History, `SessionScreen`, `MapScreen`, `SensorTestScreen` incl. driving test), `ExportUi.kt`, `CarModeUi.kt`, shared bits in `Common.kt`; `ui/theme/` colours
 - Versions are in `gradle/libs.versions.toml` (AGP 9 with built-in Kotlin, Gradle 9).
   Android Studio 2026.2 runs Gradle on Java 25, so Gradle must stay at 9.1 or newer.
@@ -62,7 +64,9 @@ Work one phase at a time; each must build and run on a real phone. Status:
 - Export uses SAF `CreateDocument` only (user picks the location); the app itself never uploads exports.
 - The user builds and runs the app in Android Studio; don't run Gradle builds without asking.
 - GPS uses `GPS_PROVIDER` only. The network provider can send Wi-Fi/cell data to outside services.
-- `INTERNET` is used only for OpenStreetMap tiles, and only after the user opts in
+- `INTERNET` is used only for OpenStreetMap tiles and elevation tiles (terrain estimate), each opt-in.
+  Elevation: `Settings.elevationDownloadsEnabled`, cache `cacheDir/terrain` capped at 100 MB.
+- Map tiles only after the user opts in
   (`Settings.mapTilesEnabled`, asked on first map open, switch on the map screen). When off:
   `setUseDataConnection(false)`, tiles hidden, grid shown. Tile cache in `cacheDir`, capped at 50 MB.
   User-Agent is the app name/version only. Never bulk-download tiles (OSM policy).

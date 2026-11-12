@@ -9,7 +9,7 @@ Where those lines of sight cross is roughly where the object is.
 > This app gives an estimate to guide where to look. It is not a location to dispatch
 > emergency services to. **For a real fire, call 911 or your local fire agency.**
 
-## What works now (Phase 4 + car mode)
+## What works now (Phase 6: single-photo mode)
 
 - **Take a bearing:** point the camera's crosshair at the object and press the button. The
   app averages the compass over one second, takes a photo, and records your GPS position.
@@ -26,21 +26,30 @@ Where those lines of sight cross is roughly where the object is.
 - **Map:** each sightline drawn as a coloured wedge, the estimated location where they cross,
   and a shaded area showing how far off it might be. Works with 2 bearings or more. Warns about
   shallow crossing angles and bearings that don't agree.
+- **Terrain estimate (single-photo mode):** even with **one** bearing, the app can estimate
+  how far away the object is. It uses the photo's tilt to follow your line of sight down to
+  the ground, using free elevation data. Best from high ground looking down; rough from flat
+  ground. With several bearings it's a useful cross-check.
 - **Export:** save a session as a **GeoJSON** or **GPX** file to open in other map apps
   (QGIS, Google Earth, OsmAnd, caltopo…). You choose where the file goes.
 - **Sensor check:** a live readout of GPS accuracy, compass heading, tilt and compass calibration.
 
-Next: sharing sessions between phones over a private network (Tailscale). See `PLAN.md`.
+Sharing sessions between phones over a private network (Tailscale) is planned but on hold;
+see `docs/PHASE5-PLAN.md`.
 
 ## Privacy
 
 - Photos, bearings and positions stay on your phone, inside the app. They don't appear in
   your Gallery and aren't backed up to the cloud. Uninstalling the app deletes them.
-- The **only** internet use is downloading map images from OpenStreetMap, and only if you
-  turn on **Map background**. The app asks the first time you open the map. When it's on,
-  OpenStreetMap's servers see which area you're looking at and your internet address.
-  Your bearings, photos and GPS position are never sent. With it off, the map shows a plain
-  grid and the app makes no internet connections at all.
+- The app uses the internet for only two things, each only if you turn it on:
+  - **Map background**: map images from OpenStreetMap. The app asks the first time you open
+    the map. OpenStreetMap's servers see which area you're looking at and your internet address.
+  - **Elevation data** for terrain estimates, from the free "Terrain Tiles" collection on
+    Amazon's open data service. The app asks the first time you turn on **Terrain estimate**.
+    Amazon sees which area the sightlines cross and your internet address.
+
+  Your bearings, photos and GPS position are never sent. With both off, the app makes no
+  internet connections at all.
 - **Export** writes a file only where you choose. The app never sends it anywhere itself.
 - No ads, no tracking, no accounts. Everything used to build it is free.
 
