@@ -9,21 +9,21 @@ Where those lines of sight cross is roughly where the object is.
 > This app gives an estimate to guide where to look. It is not a location to dispatch
 > emergency services to. **For a real fire, call 911 or your local fire agency.**
 
-## What works now (Phase 1)
+## What works now (Phase 2)
 
-The app currently has one screen, a **sensor check**, that shows live:
+- **Take a bearing:** point the camera's crosshair at the object and press the button. The
+  app averages the compass over one second, takes a photo, and records your GPS position.
+  You then tap exactly on the object in the photo, and the app works out the precise direction.
+- **Saved bearings:** a list of every bearing taken, with photo, direction, position and time.
+- **Sensor check:** a live readout of GPS accuracy, compass heading, tilt and compass calibration.
 
-- your GPS position and how accurate it is
-- the direction the back camera points (true north and magnetic north)
-- how far the phone is tilted, with a small level
-- whether the compass is calibrated, with instructions to fix it
-
-Later phases add the camera, the map and the triangulation itself. See `PLAN.md`.
+Next comes the map, which draws each sightline and shows where they cross. See `PLAN.md`.
 
 ## Privacy
 
 - The app has **no internet permission**. It cannot send anything anywhere.
-- Your location stays on your phone. Nothing is backed up to the cloud.
+- Photos and positions stay on your phone, inside the app. They don't appear in your Gallery
+  and aren't backed up to the cloud. Uninstalling the app deletes them.
 - No ads, no tracking, no accounts. Everything used to build it is free.
 
 ## Guides
