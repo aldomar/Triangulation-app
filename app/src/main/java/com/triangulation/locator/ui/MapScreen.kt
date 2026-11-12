@@ -45,7 +45,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
@@ -208,8 +210,14 @@ fun MapScreen(store: ObservationStore, sessionId: Long, onBack: () -> Unit) {
 
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.windowInsetsPadding(WindowInsets.safeDrawing)) {
+            // Top bar and bottom panel have solid backgrounds and sit above the map, so they stay
+            // readable even if the map ever draws past its own area (e.g. during pinch-zoom).
             Row(
-                Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                Modifier
+                    .zIndex(1f)
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 TextButton(onClick = onBack) { Text("← Back") }
@@ -226,7 +234,10 @@ fun MapScreen(store: ObservationStore, sessionId: Long, onBack: () -> Unit) {
                 Switch(checked = tilesOn, onCheckedChange = { setTiles(it) })
             }
 
-            Box(Modifier.weight(1f).fillMaxWidth()) {
+            HorizontalDivider(Modifier.zIndex(1f))
+            // Clip the map to its own area: osmdroid scales its canvas while zooming, and
+            // Compose doesn't clip an AndroidView by itself.
+            Box(Modifier.weight(1f).fillMaxWidth().clipToBounds()) {
                 drawing?.let { TriangulationMap(it, tilesOn) }
                 Text(
                     if (tilesOn) "© OpenStreetMap contributors" else "Map background off: grid only",
@@ -238,9 +249,13 @@ fun MapScreen(store: ObservationStore, sessionId: Long, onBack: () -> Unit) {
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                 )
             }
+            HorizontalDivider(Modifier.zIndex(1f))
 
             Column(
                 Modifier
+                    .zIndex(1f)
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.background)
                     .heightIn(max = 300.dp)
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
@@ -338,7 +353,7 @@ private fun TriangulationMap(drawing: MapDrawing, tilesOn: Boolean) {
 
     AndroidView(
         factory = { mapView },
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier.fillMaxSize().clipToBounds(),
         update = { map ->
             // No downloads at all while the background is off.
             map.setUseDataConnection(tilesOn)
