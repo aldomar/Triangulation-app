@@ -95,6 +95,11 @@ private val HELP: Map<HelpTopic, List<Block>> = mapOf(
             "\"Tilted sideways\": hold the phone level.",
             "New bearings go into the session shown at the top. Tap New session when you start on a different object.",
         ),
+        Para(
+            "Zoom (1× 3× 5× 10×, below the camera view) helps you see and tap a small or faint object. The app " +
+                "allows for the zoom, so the bearing stays correct. It doesn't make the compass more accurate."
+        ),
+        Tip("At 10× every wobble shows. Brace the phone against something and put the object near the centre."),
         Tip("Two people taking bearings of the same smoke at the same time, from different places, give the best result."),
     ),
     HelpTopic.Review to listOf(

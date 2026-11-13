@@ -48,7 +48,7 @@ Work one phase at a time; each must build and run on a real phone. Status:
   - `map/`: osmdroid setup (`MapSetup.kt`) and the custom dot overlay
   - `terrain/`: single-photo mode. `TerrainMath.kt` (line of sight to the ground) and `Terrarium.kt`
     (elevation tile maths) are pure Kotlin; `TerrainTiles.kt` downloads/caches tiles and runs estimates
-- Tests: `app/src/test/.../solver/SolverTest.kt`, `export/SessionExportTest.kt`, `export/ShareTextTest.kt`, `solver/CoordinateParserTest.kt`, `solver/LandmarkCheckTest.kt`, `sensors/MagneticCheckTest.kt`, `car/CarMathTest.kt`, `terrain/TerrainMathTest.kt` (JUnit 4).
+- Tests: `app/src/test/.../solver/SolverTest.kt`, `export/SessionExportTest.kt`, `export/ShareTextTest.kt`, `solver/CoordinateParserTest.kt`, `solver/LandmarkCheckTest.kt`, `sensors/MagneticCheckTest.kt`, `car/CarMathTest.kt`, `terrain/TerrainMathTest.kt`, `camera/CameraOpticsTest.kt` (JUnit 4).
   - `ui/`: Compose screens (`CaptureScreen`, `SessionsScreen` = History, `SessionScreen`, `MapScreen`, `SensorTestScreen` incl. driving test, `TypedBearingScreen`, `LandmarkCheckScreen`, `PointPicker` tap-to-choose map), `ExportUi.kt`, `CarModeUi.kt`, shared bits in `Common.kt`; `ui/theme/` colours
 - Versions are in `gradle/libs.versions.toml` (AGP 9 with built-in Kotlin, Gradle 9).
   Android Studio 2026.2 runs Gradle on Java 25, so Gradle must stay at 9.1 or newer.
@@ -58,6 +58,8 @@ Work one phase at a time; each must build and run on a real phone. Status:
 - True heading = magnetic heading + `GeomagneticField` declination.
 - Bearing = averaged (1 s, raw samples, circular mean) magnetic heading + declination + tap offset.
   Tap offset uses focal length from Camera2 characteristics, pitch-corrected (`BearingMath.tapOffsetDeg`).
+- Zoom presets (1×/3×/5×/10×, capture screen): the saved `focalLengthFraction` already includes the zoom
+  (read back from CameraX at the photo). `Observation.zoomRatio` (DB v6) is for display only; null = 1×.
 - Photos stay in app-private storage, never the Gallery. Saved at most 1920 px on the long side.
 - Storage is Room (sessions + observations). Schema changes need a proper `Migration`; never use destructive fallback. Room/KSP via KSP plugin (AGP 9 built-in Kotlin, no kapt).
 - Magnetic interference: `MagneticCheck` compares the magnetometer field strength with `GeomagneticField.fieldStrength`;

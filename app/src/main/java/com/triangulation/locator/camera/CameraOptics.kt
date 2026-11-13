@@ -22,15 +22,20 @@ data class CameraOptics(
      * Focal length in pixels, divided by the photo's width, for a photo of the given size.
      *
      * The photo is the largest centred crop of the sensor's active area with the photo's
-     * aspect ratio, scaled to the photo size. That holds at 1× zoom, which is all the app uses.
+     * aspect ratio, scaled to the photo size, at 1× zoom.
+     *
+     * Zoom (CameraX `setZoomRatio`) crops the picture around its centre, so a photo taken at
+     * [zoomRatio]× covers 1/[zoomRatio] of the width and the focal length in photo widths grows
+     * by the same factor. On phones that switch to a telephoto lens, CameraX keeps the zoom
+     * ratio matched to the main lens's view, so this still holds closely.
      */
-    fun focalFraction(photoWidth: Int, photoHeight: Int): Double {
+    fun focalFraction(photoWidth: Int, photoHeight: Int, zoomRatio: Double = 1.0): Double {
         val focalPxOnSensor = focalLengthMm / pixelSizeMm
         val scale = max(
             max(photoWidth, photoHeight).toDouble() / activeArrayLongPx,
             min(photoWidth, photoHeight).toDouble() / activeArrayShortPx,
         )
-        return focalPxOnSensor * scale / photoWidth
+        return focalPxOnSensor * scale / photoWidth * zoomRatio
     }
 
     companion object {

@@ -8,9 +8,12 @@ import android.util.Log
 import android.util.Size
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.Preview
+import androidx.camera.core.ZoomState
+import androidx.lifecycle.Observer
 import androidx.camera.core.resolutionselector.AspectRatioStrategy
 import androidx.camera.core.resolutionselector.ResolutionSelector
 import androidx.camera.core.resolutionselector.ResolutionStrategy
@@ -111,6 +114,9 @@ private const val TAG = "CaptureScreen"
 /** How long the heading is averaged over when the shutter is pressed. */
 private const val STEADY_MS = 1_000L
 
+/** Fixed zoom steps. Fixed values keep the zoom known exactly; only those the phone supports are shown. */
+private val ZOOM_PRESETS = listOf(1f, 3f, 5f, 10f)
+
 /** Everything recorded at the moment of the photo, before the user taps the target. */
 private class PendingCapture(
     val photo: Bitmap,
@@ -123,8 +129,10 @@ private class PendingCapture(
     val pitchDeg: Double,
     val rollDeg: Double,
     val compassAccuracy: Int,
-    /** Null if the phone didn't report its lens details. */
+    /** Null if the phone didn't report its lens details. Already includes [zoomRatio]. */
     val focalFraction: Double?,
+    /** Camera zoom when the photo was taken (1.0 = no zoom). */
+    val zoomRatio: Double = 1.0,
     /** Measured ÷ expected magnetic field strength, averaged over the second (null in car mode or if unknown). */
     val magneticFieldRatio: Double? = null,
     /** Set in car mode. Then [magneticHeadingDeg] is the TRUE heading and [declinationDeg] is 0. */
@@ -229,6 +237,20 @@ fun CaptureScreen(
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var optics by remember { mutableStateOf<CameraOptics?>(null) }
     var cameraError by remember { mutableStateOf<String?>(null) }
+    var camera by remember { mutableStateOf<Camera?>(null) }
+    // Starts at 1× every time the screen opens.
+    var zoom by remember { mutableFloatStateOf(1f) }
+    var maxZoom by remember { mutableFloatStateOf(1f) }
+    // Apply the chosen zoom, and again whenever the camera restarts (it resets to 1×).
+    LaunchedEffect(camera, zoom) {
+        val cam = camera ?: return@LaunchedEffect
+        runCatching { cam.cameraControl.setZoomRatio(zoom) }
+            .onFailure { Log.w(TAG, "Zoom $zoom failed", it) }
+    }
+    // The zoom the camera is really using, read at the moment of the photo.
+    val currentZoom: () -> Double = {
+        camera?.cameraInfo?.zoomState?.value?.zoomRatio?.toDouble()?.takeIf { it >= 1.0 } ?: 1.0
+    }
 
     // The session new bearings go into. Null until the first bearing starts one.
     var activeSession by remember { mutableStateOf<Session?>(null) }
@@ -352,12 +374,17 @@ fun CaptureScreen(
                         contentAlignment = Alignment.Center,
                     ) {
                         CameraPreview(
-                            onBound = { capture, cameraOptics ->
+                            onBound = { capture, cameraOptics, boundCamera ->
                                 imageCapture = capture
                                 optics = cameraOptics
+                                camera = boundCamera
                                 cameraError = null
                             },
-                            onUnbound = { imageCapture = null },
+                            onMaxZoom = { maxZoom = it },
+                            onUnbound = {
+                                imageCapture = null
+                                camera = null
+                            },
                             onError = { cameraError = it },
                         )
                         Crosshair()
@@ -365,6 +392,13 @@ fun CaptureScreen(
                             Text(it, color = Color.White, modifier = Modifier.padding(24.dp))
                         }
                     }
+
+                    ZoomPresets(
+                        presets = ZOOM_PRESETS.filter { it <= maxZoom + 0.01f },
+                        selected = zoom,
+                        enabled = step != Step.Steadying,
+                        onSelect = { zoom = it },
+                    )
 
                     if (carOn) {
                         CarReadout(gyroReading, lineUp, fixes.lastOrNull(), gps?.location, gps?.providerEnabled != false)
@@ -415,9 +449,9 @@ fun CaptureScreen(
                                     scope.launch {
                                         val carLineUp = lineUp
                                         val pending = if (carOn && carLineUp != null) {
-                                            takeCarBearing(capture, gyroFlow, carLineUp, { gpsState.value?.location }, optics)
+                                            takeCarBearing(capture, gyroFlow, carLineUp, { gpsState.value?.location }, optics, currentZoom)
                                         } else {
-                                            takeBearing(capture, orientationFlow, { gpsState.value?.location }, optics)
+                                            takeBearing(capture, orientationFlow, { gpsState.value?.location }, optics, currentZoom)
                                         }
                                         if (pending == null) {
                                             Toast.makeText(context, "Couldn't take the bearing. Please try again.", Toast.LENGTH_LONG).show()
@@ -449,9 +483,11 @@ private suspend fun takeBearing(
     orientationFlow: Flow<OrientationState>,
     currentLocation: () -> Location?,
     optics: CameraOptics?,
+    currentZoom: () -> Double,
 ): PendingCapture? {
     try {
         val (photo, samples) = photoWithSamples(capture, orientationFlow.filterIsInstance<OrientationState.Reading>())
+        val zoomRatio = currentZoom()
         val location = currentLocation()
         if (samples.isEmpty() || location == null) return null
         val headings = samples.map { it.rawMagneticHeadingDeg }
@@ -468,7 +504,8 @@ private suspend fun takeBearing(
             pitchDeg = circularMeanDeg(samples.map { it.rawPitchDeg }),
             rollDeg = circularMeanDeg(samples.map { it.rawRollDeg }),
             compassAccuracy = samples.last().accuracy,
-            focalFraction = optics?.focalFraction(photo.width, photo.height),
+            focalFraction = optics?.focalFraction(photo.width, photo.height, zoomRatio),
+            zoomRatio = zoomRatio,
             magneticFieldRatio = fieldRatio,
         )
     } catch (e: CancellationException) {
@@ -502,10 +539,12 @@ private suspend fun takeCarBearing(
     lineUp: LineUp,
     currentLocation: () -> Location?,
     optics: CameraOptics?,
+    currentZoom: () -> Double,
 ): PendingCapture? {
     try {
         val startNanos = SystemClock.elapsedRealtimeNanos()
         val (photo, readings) = photoWithSamples(capture, gyroFlow.filterIsInstance<GyroState.Reading>())
+        val zoomRatio = currentZoom()
         val photoNanos = startNanos + STEADY_MS * 1_000_000L / 2
         val samples = readings.filter { it.runId == lineUp.runId }
         val location = currentLocation()
@@ -531,7 +570,8 @@ private suspend fun takeCarBearing(
             pitchDeg = circularMeanDeg(samples.map { it.rawPitchDeg }),
             rollDeg = circularMeanDeg(samples.map { it.rawRollDeg }),
             compassAccuracy = -1,
-            focalFraction = optics?.focalFraction(photo.width, photo.height),
+            focalFraction = optics?.focalFraction(photo.width, photo.height, zoomRatio),
+            zoomRatio = zoomRatio,
             car = CarCapture(
                 position = position,
                 speedMps = if (location.hasSpeed()) location.speed.toDouble() else null,
@@ -676,7 +716,8 @@ private fun PermissionsNeeded(approximateOnly: Boolean, onRequest: () -> Unit, o
  */
 @Composable
 private fun CameraPreview(
-    onBound: (ImageCapture, CameraOptics?) -> Unit,
+    onBound: (ImageCapture, CameraOptics?, Camera) -> Unit,
+    onMaxZoom: (Float) -> Unit,
     onUnbound: () -> Unit,
     onError: (String) -> Unit,
 ) {
@@ -687,6 +728,8 @@ private fun CameraPreview(
         PreviewView(context).apply { scaleType = PreviewView.ScaleType.FIT_CENTER }
     }
     var provider by remember { mutableStateOf<ProcessCameraProvider?>(null) }
+    var boundCamera by remember { mutableStateOf<Camera?>(null) }
+    val zoomObserver = remember { Observer<ZoomState> { onMaxZoom(it.maxZoomRatio) } }
 
     AndroidView(factory = { previewView }, modifier = Modifier.fillMaxSize())
 
@@ -718,7 +761,10 @@ private fun CameraPreview(
             val camera = cameraProvider.bindToLifecycle(
                 lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, capture,
             )
-            onBound(capture, CameraOptics.from(camera.cameraInfo))
+            // The zoom range is known once the camera has opened, so watch for it.
+            camera.cameraInfo.zoomState.observe(lifecycleOwner, zoomObserver)
+            boundCamera = camera
+            onBound(capture, CameraOptics.from(camera.cameraInfo), camera)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
@@ -728,8 +774,26 @@ private fun CameraPreview(
     }
     DisposableEffect(Unit) {
         onDispose {
+            boundCamera?.cameraInfo?.zoomState?.removeObserver(zoomObserver)
             provider?.unbindAll()
             onUnbound()
+        }
+    }
+}
+
+/** Zoom buttons (1× 3× 5× 10×). Hidden when the phone can't zoom at all. */
+@Composable
+private fun ZoomPresets(presets: List<Float>, selected: Float, enabled: Boolean, onSelect: (Float) -> Unit) {
+    if (presets.size < 2) return
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        presets.forEach { z ->
+            val label = "${z.roundToInt()}×"
+            val modifier = Modifier.weight(1f).height(40.dp)
+            if (z == selected) {
+                Button(onClick = { onSelect(z) }, enabled = enabled, modifier = modifier) { Text(label) }
+            } else {
+                OutlinedButton(onClick = { onSelect(z) }, enabled = enabled, modifier = modifier) { Text(label) }
+            }
         }
     }
 }
@@ -819,7 +883,7 @@ private fun ReviewScreen(
     }
     var saving by remember { mutableStateOf(false) }
 
-    val focal = pending.focalFraction ?: BearingMath.fallbackFocalFraction()
+    val focal = pending.focalFraction ?: BearingMath.fallbackFocalFraction(pending.zoomRatio)
     val tapOffset = BearingMath.tapOffsetDeg(
         tapX.toDouble(), tapY.toDouble(), focal, photo.height.toDouble() / photo.width, pending.pitchDeg,
     )
@@ -903,6 +967,7 @@ private fun ReviewScreen(
                     )
                 }
                 ValueRow("Tap correction", "${signed(tapOffset)}°")
+                if (pending.zoomRatio > 1.01) ValueRow("Zoom", zoomText(pending.zoomRatio))
                 ValueRow(
                     "Line of sight",
                     lookAngleText(TerrainMath.elevationAngleDeg(tapX.toDouble(), tapY.toDouble(), focal, photo.height.toDouble() / photo.width, pending.pitchDeg)),
@@ -1000,6 +1065,7 @@ private fun buildObservation(
         tapX = tapX,
         tapY = tapY,
         focalLengthFraction = p.focalFraction,
+        zoomRatio = p.zoomRatio.takeIf { it > 1.01 },
         tapOffsetDeg = tapOffset,
         bearingDeg = bearing,
         errorDeg = errorDeg,

@@ -296,7 +296,8 @@ private fun ObservationRow(
                 )
                 if (!obs.typedIn) {
                     Text(
-                        lookAngleText(BearingMath.elevationAngleDeg(obs)),
+                        lookAngleText(BearingMath.elevationAngleDeg(obs)) +
+                            (obs.zoomRatio?.takeIf { it > 1.01 }?.let { "  ·  zoom ${zoomText(it)}" } ?: ""),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
