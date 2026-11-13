@@ -13,7 +13,9 @@ object BearingMath {
     /** Used only if the phone doesn't report its camera's focal length. Typical portrait photo width. */
     private const val FALLBACK_HORIZONTAL_FOV_DEG = 50.0
 
-    fun fallbackFocalFraction(): Double = 0.5 / tan(Math.toRadians(FALLBACK_HORIZONTAL_FOV_DEG / 2))
+    /** Focal length ÷ photo width to use when the phone gives no lens details. Zoom multiplies it. */
+    fun fallbackFocalFraction(zoomRatio: Double = 1.0): Double =
+        0.5 / tan(Math.toRadians(FALLBACK_HORIZONTAL_FOV_DEG / 2)) * zoomRatio
 
     /**
      * Horizontal angle from the photo centre to a tapped point, in degrees (+ = right).
@@ -47,7 +49,7 @@ object BearingMath {
     fun elevationAngleDeg(obs: Observation): Double = TerrainMath.elevationAngleDeg(
         obs.tapX,
         obs.tapY,
-        obs.focalLengthFraction ?: fallbackFocalFraction(),
+        obs.focalLengthFraction ?: fallbackFocalFraction(obs.zoomRatio ?: 1.0),
         if (obs.photoWidth > 0) obs.photoHeight.toDouble() / obs.photoWidth else 4.0 / 3.0,
         obs.pitchDeg,
     )

@@ -14,6 +14,7 @@ Where those lines of sight cross is roughly where the object is.
 - **Take a bearing:** point the camera's crosshair at the object and press the button. The
   app averages the compass over one second, takes a photo, and records your GPS position.
   You then tap exactly on the object in the photo, and the app works out the precise direction.
+  Zoom buttons (1×, 3×, 5×, 10×) help with small or faint objects; the app allows for the zoom.
 - **Car mode (passengers only):** take bearings from a moving car. The compass is unreliable
   inside a car, so this uses the gyroscope, lined up with the GPS direction of travel. A
   **driving test** on the Sensors screen measures how well it works on your phone and car.

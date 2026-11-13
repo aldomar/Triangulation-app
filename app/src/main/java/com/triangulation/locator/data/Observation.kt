@@ -48,7 +48,10 @@ data class Observation(
     /** Where the user tapped on the photo, as fractions of width/height (0.5, 0.5 = centre). */
     val tapX: Double,
     val tapY: Double,
-    /** Camera focal length divided by photo width. Null if the phone didn't report it. */
+    /**
+     * Camera focal length divided by photo width, already including any zoom.
+     * Null if the phone didn't report it.
+     */
     val focalLengthFraction: Double?,
     /** Angle between the photo centre and the tapped point, + = to the right. */
     val tapOffsetDeg: Double,
@@ -85,6 +88,11 @@ data class Observation(
     @ColumnInfo(defaultValue = "0") val typedIn: Boolean = false,
     /** Free text from the user, e.g. who reported a typed-in bearing. */
     val note: String? = null,
+    /**
+     * Camera zoom when the photo was taken (3.0 = 3×). For display only: the maths uses
+     * [focalLengthFraction], which already includes the zoom. Null = 1× (older bearings, typed-in ones).
+     */
+    val zoomRatio: Double? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("version", 1)
@@ -115,6 +123,7 @@ data class Observation(
         putOpt("magneticFieldRatio", magneticFieldRatio)
         put("typedIn", typedIn)
         putOpt("note", note)
+        putOpt("zoomRatio", zoomRatio)
     }
 
     companion object {
@@ -146,6 +155,7 @@ data class Observation(
             magneticFieldRatio = o.optDoubleOrNull("magneticFieldRatio"),
             typedIn = o.optBoolean("typedIn", false),
             note = if (o.has("note") && !o.isNull("note")) o.getString("note") else null,
+            zoomRatio = o.optDoubleOrNull("zoomRatio"),
         )
 
         private fun JSONObject.optDoubleOrNull(key: String): Double? =

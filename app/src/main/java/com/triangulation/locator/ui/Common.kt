@@ -53,6 +53,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
 import java.util.Locale
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 // ---------- Sensor streams ----------
 // Collected with collectAsStateWithLifecycle, so sensors stop when the app is in the background.
@@ -235,5 +237,9 @@ private val CARDINALS = arrayOf(
 fun cardinal(deg: Double): String = CARDINALS[((normalize360(deg) + 11.25) / 22.5).toInt() % 16]
 
 fun fmt(value: Double, decimals: Int): String = String.format(Locale.US, "%.${decimals}f", value)
+
+/** Camera zoom as people say it: "5×", or "2.5×" for an in-between value. */
+fun zoomText(ratio: Double): String =
+    if (abs(ratio - ratio.roundToInt()) < 0.05) "${ratio.roundToInt()}×" else "${fmt(ratio, 1)}×"
 
 fun signed(value: Double, decimals: Int = 1): String = String.format(Locale.US, "%+.${decimals}f", value)

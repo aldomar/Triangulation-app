@@ -4,7 +4,7 @@ Read this first when picking the project up in a new conversation. It records wh
 stands, decisions already made, and how the owner likes to work. `PLAN.md` is the original
 build plan; `CLAUDE.md` holds the standing rules.
 
-_Last updated: 2026-11-12_
+_Last updated: 2026-11-13_
 
 ## Where we are
 
@@ -43,6 +43,14 @@ _Last updated: 2026-11-12_
    "?" on every screen opens a full-screen help dialog at that screen's topic, with Contents.
    Short phone-sized text in `ui/Help.kt` (owner chose this over showing USAGE.md); opens once
    by itself on first launch (`Settings.helpShown`). Built and checked on the phone. PR #13 → `landmark-check`.
+6. **Zoom presets** (`zoom-presets`, off `main`; owner's request, 2026-11-13): 1×/3×/5×/10×
+   buttons under the camera view (only those the phone supports; starts at 1× each time).
+   Zoom is applied by CameraX; the zoom actually in use at the photo is read back and multiplied
+   into the saved `focalLengthFraction` (`CameraOptics.focalFraction(..., zoomRatio)`), so the
+   tap offset, terrain estimate and solver need no other change. `Observation.zoomRatio` is
+   display only (DB v6, AutoMigration; null = 1×). Unit test `camera/CameraOpticsTest.kt`.
+   **Not yet built or run on the phone.** To check: presets change the preview; a landmark
+   check at 1× and 5× (target off centre) agrees within about 0.5°; old sessions still open.
 
 **Immediate next step:** outdoor testing of Phases 6 and 4b (checklists below), then tune the
 guesses from the results. Phase 5 is on hold (plan kept in `docs/PHASE5-PLAN.md`).

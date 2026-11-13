@@ -51,6 +51,23 @@ moving smoke won't spoil the result.
 If you can only take one bearing, the map's **Terrain estimate** can still give a rough
 location, especially from high ground.
 
+### Zoom
+
+Below the camera view are zoom buttons: **1×**, **3×**, **5×** and **10×**. Only the steps
+your phone can do are shown. Zoom starts at 1× each time you open the screen.
+
+- Zoom helps you **see** a small or faint object and **tap it precisely** on the photo. The
+  app knows the zoom and allows for it, so the bearing stays correct.
+- Zoom does **not** make the compass more accurate. The compass is still the biggest source
+  of error, so the error band doesn't shrink.
+- At 3× and above, many phones switch to a separate telephoto camera. It can point a tiny
+  bit differently from the main camera, usually well under a degree. That's much less than
+  the compass error, but if you want to know, use **Check against a landmark** at 1× and
+  then at 5×.
+- At 10× the view is very narrow and every wobble shows. Brace the phone (against a post or
+  a car roof), put the object near the centre, and hold very still.
+- Saved bearings taken with zoom show it in the session list (for example "zoom 5×").
+
 ## Car mode (from a moving car, passengers only)
 
 > **Never use the app while driving.** Car mode is for a passenger.

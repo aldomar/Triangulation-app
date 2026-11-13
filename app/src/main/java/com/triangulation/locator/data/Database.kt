@@ -22,16 +22,18 @@ import kotlinx.coroutines.flow.Flow
  * interference check (observations gained magneticFieldRatio; existing rows get null).
  * 4 = typed-in bearings (observations gained typedIn and note; existing rows get false/null).
  * 5 = compass checks against landmarks (new table compass_checks; nothing else changes).
+ * 6 = zoom presets (observations gained zoomRatio; existing rows get null, meaning 1×).
  */
 @Database(
     entities = [Session::class, Observation::class, CompassCheck::class],
-    version = 5,
+    version = 6,
     exportSchema = true,
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
         AutoMigration(from = 2, to = 3),
         AutoMigration(from = 3, to = 4),
         AutoMigration(from = 4, to = 5),
+        AutoMigration(from = 5, to = 6),
     ],
 )
 abstract class AppDatabase : RoomDatabase() {
