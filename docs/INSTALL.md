@@ -1,6 +1,16 @@
 # Installing Triangulation Locator
 
-This guide assumes no programming experience. It takes about 30–60 minutes the first time,
+## Easy install (no computer needed)
+
+On your Android phone, open **https://aldomar.github.io/Triangulation-app/** and tap
+**Download the app**. The page explains each step. You can also download
+`triangulation-locator.apk` directly from the
+[latest release](https://github.com/aldomar/Triangulation-app/releases/latest).
+
+## Build it yourself
+
+The rest of this guide builds the app from the source code with Android Studio.
+It assumes no programming experience. It takes about 30–60 minutes the first time,
 mostly waiting for downloads. Everything is free.
 
 ## What you need
@@ -75,6 +85,22 @@ To make an installable file (APK) for other people:
    network; see `PLAN.md`).
 5. On that phone, open the APK. If asked, allow **"Install unknown apps"** for the app you
    opened it with, then tap **Install**.
+
+## Publishing a new version on the download page (owner)
+
+The download page always links to the APK in the **newest GitHub release**, so the page itself
+never needs editing.
+
+1. Raise `versionCode` and `versionName` in `app/build.gradle.kts`.
+2. Build the signed release APK as above, always with the **same key**.
+3. Rename the file to exactly `triangulation-locator.apk`.
+4. On GitHub, open **Releases → Draft a new release**. Create a tag such as `v0.6.0`, add a title
+   and a short list of changes, attach `triangulation-locator.apk`, and click **Publish release**.
+
+(Claude can do step 4 for you with `gh release create` if you tell it where the APK is.)
+
+The download page itself is switched on once in the repository's **Settings → Pages**:
+Source **Deploy from a branch**, branch **main**, folder **/docs**.
 
 ## Troubleshooting
 
