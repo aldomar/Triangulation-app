@@ -173,6 +173,11 @@ JSON bearings migrated into "Earlier bearings" with their photos on the owner's 
 - **Map library:** osmdroid 6.1.20, chosen for simplicity. Its development appears to have
   stopped; MapLibre is the fallback named in `PLAN.md` if it ever becomes a problem.
 - GPS uses `GPS_PROVIDER` only (no network provider, no Play Services).
+- **Download page (owner agreed, 2026-11-17):** GitHub Pages serves `docs/index.html` (Settings →
+  Pages: `main` / `/docs`) at https://aldomar.github.io/Triangulation-app/. Its button links to
+  `releases/latest/download/triangulation-locator.apk`, so each GitHub release must attach the APK
+  under exactly that name. The owner builds and signs the release APK in Android Studio; the key
+  stays on their PC (no CI signing). Steps in `docs/INSTALL.md`.
 
 ## Environment notes (owner's Windows PC)
 

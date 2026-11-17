@@ -1,0 +1,86 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Triangulation Locator</title>
+<meta name="description" content="Download and install the Triangulation Locator Android app.">
+<style>
+  :root {
+    --bg: #f7f7f5; --card: #ffffff; --text: #1d1d1b; --muted: #5c5c58;
+    --accent: #c4471c; --accent-text: #ffffff; --border: #e2e2dc; --warn-bg: #fff4e0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #161615; --card: #20201e; --text: #ecece8; --muted: #a8a8a2;
+      --accent: #f07a4a; --accent-text: #161615; --border: #33332f; --warn-bg: #3a2d16;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 17px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  main { max-width: 640px; margin: 0 auto; padding: 32px 16px 48px; }
+  h1 { font-size: 1.9rem; margin: 0 0 8px; line-height: 1.2; }
+  h2 { font-size: 1.2rem; margin: 32px 0 8px; }
+  p.lead { color: var(--muted); margin: 0 0 24px; }
+  .download {
+    display: block; text-align: center; text-decoration: none;
+    background: var(--accent); color: var(--accent-text);
+    font-size: 1.25rem; font-weight: 600; padding: 18px 20px; border-radius: 12px;
+  }
+  .small { color: var(--muted); font-size: 0.9rem; margin-top: 8px; text-align: center; }
+  ol { padding-left: 1.4em; }
+  li { margin: 6px 0; }
+  .note {
+    background: var(--warn-bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 12px 16px; margin: 16px 0;
+  }
+  a { color: var(--accent); }
+  footer { margin-top: 40px; color: var(--muted); font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Triangulation Locator</h1>
+  <p class="lead">An Android app that estimates where a distant object, such as a column of
+    smoke, is by taking compass bearings from two or more places.</p>
+
+  <a class="download" href="https://github.com/aldomar/Triangulation-app/releases/latest/download/triangulation-locator.apk">
+    Download the app (APK)</a>
+  <p class="small">Android 8.0 or newer. Free, no ads, no tracking.</p>
+
+  <div class="note">This app gives an estimate to guide where to look. It is not a location to
+    send emergency services to. <strong>For a real fire, call 911 or your local fire agency.</strong></div>
+
+  <h2>How to install</h2>
+  <ol>
+    <li>Open this page <strong>on your Android phone</strong> and tap <strong>Download the app</strong>.</li>
+    <li>If the browser warns that the file might be harmful, tap <strong>Download anyway</strong>.
+      (Android shows this for every app that doesn't come from the Play Store.)</li>
+    <li>When the download finishes, tap <strong>Open</strong> (or find
+      <code>triangulation-locator.apk</code> in your Downloads).</li>
+    <li>If asked, allow <strong>Install unknown apps</strong> for your browser, then go back.</li>
+    <li>Tap <strong>Install</strong>. The app appears in your app list as
+      <strong>Triangulation Locator</strong>.</li>
+  </ol>
+
+  <h2>Updating</h2>
+  <p>Come back to this page, download again and install over the top. Your saved sessions are kept.</p>
+  <div class="note">If you installed the app earlier from Android Studio, you'll see
+    <strong>"App not installed"</strong>. Uninstall the old copy first. This deletes its saved
+    sessions, so export any you want to keep before uninstalling.</div>
+
+  <h2>More</h2>
+  <ul>
+    <li><a href="https://github.com/aldomar/Triangulation-app/blob/main/docs/USAGE.md">How to use the app</a></li>
+    <li><a href="https://github.com/aldomar/Triangulation-app/releases">All versions and what changed</a></li>
+    <li><a href="https://github.com/aldomar/Triangulation-app/blob/main/docs/INSTALL.md">Build it yourself with Android Studio</a></li>
+    <li><a href="https://github.com/aldomar/Triangulation-app">Source code</a></li>
+  </ul>
+
+  <footer>This page has no cookies, analytics or tracking.</footer>
+</main>
+</body>
+</html>

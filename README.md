@@ -6,6 +6,9 @@ by pointing your phone at it from two or more different places.
 At each place the app records where you are (GPS) and which direction you are facing (compass).
 Where those lines of sight cross is roughly where the object is.
 
+**Install:** on your Android phone, open https://aldomar.github.io/Triangulation-app/ and tap
+**Download the app**.
+
 > This app gives an estimate to guide where to look. It is not a location to dispatch
 > emergency services to. **For a real fire, call 911 or your local fire agency.**
 
